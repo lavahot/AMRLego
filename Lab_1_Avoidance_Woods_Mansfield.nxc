@@ -1,0 +1,39 @@
+
+task main(){
+
+	while (true){
+		// If the left touch sensor is pressed,
+		if (SENSOR_4 == 1) {
+			//the robot should go backwards for half a second,
+			OnRev(OUT_AB, 50);
+			Wait(500);
+			Off(OUT_AB);
+			// then turn to the right for half a second.
+			OnFwd(OUT_B, 50);
+			Wait(500);
+			Off(OUT_B);
+		} 
+		// Similarly for the right sensor
+		if (SENSOR_1 == 1) {
+			//the robot should go backwards for half a second,
+			OnRev(OUT_AB, 50);
+			Wait(500);
+			Off(OUT_AB);
+			// then turn to the left for half a second.
+			OnFwd(OUT_A, 50);
+			Wait(500);
+			Off(OUT_A);
+		} 
+		// If both sensors are pressed, 
+		if (SENSOR_4 == 1 && SENSOR_1 == 1) {
+			//the robot should go backwards for half a second,  
+			OnRev(OUT_AB, 50);
+			Wait(500);
+			Off(OUT_AB);
+			// then make a larger turn (one second) either to the left or to the right.
+			OnFwd(OUT_A, 50);
+			Wait(1000);
+			Off(OUT_A);
+		}
+	}
+}
