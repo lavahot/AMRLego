@@ -2,88 +2,89 @@
 //       Define Vairables        //
 /* ----------------------------- */
 mutex moveMutex;
-bool left_flag = false;
-bool right_flag = false;
-unsigned int left_touch_counter = 0;
-unsigned int right_touch_counter = 0;
-
 
 /* ----------------------------- */
 //           Functions           //
 /* ----------------------------- */
 sub beep_program(){
- PlayTone(500, 3000);
- Wait(4000);
- PlayTone(100, 3000);
- Wait(4000);
- PlayTone(1000, 2000);
- Wait(2000);
+  PlayTone(500, 3000);
+  Wait(4000);
+  PlayTone(100, 3000);
+  Wait(4000);
+  PlayTone(1000, 2000);
+  Wait(2000);
 }
 
 sub motor_program(){
-// turn on motor 1, 50% power for 3 seconds then sound beeper
- OnFwd(OUT_A, 50);
- Wait(3000);
- PlayTone(1000, 100);
+  // turn on motor 1, 50% power for 3 seconds then sound beeper
+  OnFwd(OUT_A, 50);
+  Wait(3000);
+  PlayTone(1000, 100);
 
- // turn on motor 1, 50% power, reverse for 2 seconds then sound beeper
- OnRev(OUT_A, 50);
- Wait(2000);
- PlayTone(1000, 100);
+  // turn on motor 1, 50% power, reverse for 2 seconds then sound beeper
+  OnRev(OUT_A, 50);
+  Wait(2000);
+  PlayTone(1000, 100);
 
- // turn off motor and wait 2 seconds
- Off(OUT_A);
- Wait(2000);
+  // turn off motor and wait 2 seconds
+  Off(OUT_A);
+  Wait(2000);
 
- // turn on motor 1, 100% power for 3 seconds
- OnFwd(OUT_A, 100);
- Wait(3000);
+  // turn on motor 1, 100% power for 3 seconds
+  OnFwd(OUT_A, 100);
+  Wait(3000);
 
- // stop the motor and sound beeper
- Off(OUT_A);
- PlayTone(1000, 100);
- Wait(100);
+  // stop the motor and sound beeper
+  Off(OUT_A);
+  PlayTone(1000, 100);
+  Wait(100);
 }
 
 sub sensor_program(){
- SetSensorTouch(IN_1);
- SetSensorTouch(IN_4);
- while (1) // Do this forever
- {
-  Wait(300);
-  // If left sensor is pressed, toggle left flag, increment left counter, and adjust display
-  if (SENSOR_4 == 1){
-   left_flag = !left_flag;
-   right_flag = false;
-   left_touch_counter++;
-   TextOut(1,LCD_LINE6,"Left Bumper Pressed");
-  }
+  bool left_flag = false;
+  bool right_flag = false;
+  unsigned int left_touch_counter = 0;
+  unsigned int right_touch_counter = 0;
 
-  // If right sensor is pressed, toggle right flag, increment right counter, and adjust display
-  else if (SENSOR_1 == 1){
-   right_flag = !right_flag;
-   left_flag = false;
-   right_touch_counter++;
-   TextOut(1,LCD_LINE6,"Right Bumper Pressed");
-  }
+  SetSensorTouch(IN_1);
+  SetSensorTouch(IN_4);
+  
+  while (1) // Do this forever
+  {
+    Wait(300);
+    // If left sensor is pressed, toggle left flag, increment left counter, and adjust display
+    if (SENSOR_4 == 1){
+      left_flag = !left_flag;
+      right_flag = false;
+      left_touch_counter++;
+      TextOut(1,LCD_LINE6,"Left Bumper Pressed");
+    }
 
-  // If left flag = true, turn left
-  if (left_flag == true){
-   OnRev(OUT_A, 50);
-   OnFwd(OUT_B, 50);
-  }
+    // If right sensor is pressed, toggle right flag, increment right counter, and adjust display
+    else if (SENSOR_1 == 1){
+      right_flag = !right_flag;
+      left_flag = false;
+      right_touch_counter++;
+      TextOut(1,LCD_LINE6,"Right Bumper Pressed");
+    }
 
-  // Else if right flag = true, turn right
-  else if (right_flag == true){
-   OnRev(OUT_B, 50);
-   OnFwd(OUT_A, 50);
-  }
+    // If left flag = true, turn left
+    if (left_flag == true){
+      OnRev(OUT_A, 50);
+      OnFwd(OUT_B, 50);
+    }
 
-  // Else, stop
-  else{
-   Off(OUT_AB);
+    // Else if right flag = true, turn right
+    else if (right_flag == true){
+      OnRev(OUT_B, 50);
+      OnFwd(OUT_A, 50);
+    }
+
+    // Else, stop
+    else{
+      Off(OUT_AB);
+    }
   }
- }
 }
 
 task check_sensors(){
@@ -96,6 +97,6 @@ task check_sensors(){
 //           Main task           //
 /* ----------------------------- */
 task main(){
- sensor_program();
+  sensor_program();
 }
 
