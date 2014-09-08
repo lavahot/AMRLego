@@ -1,46 +1,52 @@
+
+#define NEAR 4
+
 task main(){
-  bool left_flag = false;
-  bool right_flag = false;
-  unsigned int left_touch_counter = 0;
-  unsigned int right_touch_counter = 0;
+  SetSensorLowspeed(IN_1);
+  SetSensorLowspeed(IN_4);
 
-  SetSensorTouch(IN_1);
-  SetSensorTouch(IN_4);
-  
-  while (1) // Do this forever
-  {
-    Wait(300);
-    // If left sensor is pressed, toggle left flag, increment left counter, and adjust display
-    if (SENSOR_4 == 1){
-      left_flag = !left_flag;
-      right_flag = false;
-      left_touch_counter++;
-      TextOut(1,LCD_LINE6,"Left Bumper Pressed");
-    }
-
-    // If right sensor is pressed, toggle right flag, increment right counter, and adjust display
-    else if (SENSOR_1 == 1){
-      right_flag = !right_flag;
-      left_flag = false;
-      right_touch_counter++;
-      TextOut(1,LCD_LINE6,"Right Bumper Pressed");
-    }
-
-    // If left flag = true, turn left
-    if (left_flag == true){
-      OnRev(OUT_A, 50);
-      OnFwd(OUT_B, 50);
-    }
-
-    // Else if right flag = true, turn right
-    else if (right_flag == true){
-      OnRev(OUT_B, 50);
-      OnFwd(OUT_A, 50);
-    }
-
-    // Else, stop
-    else{
+  while (true){
+    // If both sensors are pressed,
+    if (SensorUS(IN_4) <= NEAR && SensorUS(IN_1) <= NEAR) {
+      TextOut(1,LCD_LINE6,"Both Bumpers");
+      //the robot should go backwards for half a second,
+      OnFwd(OUT_AB, 50);
+      Wait(500);
       Off(OUT_AB);
+      // then make a larger turn (one second) either to the left or to the right.
+      OnRev(OUT_A, 50);
+      Wait(1000);
+      Off(OUT_A);
     }
+    // If the left touch sensor is pressed,
+    else if (SensorUS(IN_4) <= NEAR) {
+      TextOut(1,LCD_LINE6,"Left Bumper");
+      //the robot should go backwards for half a second,
+      OnFwd(OUT_AB, 50);
+      Wait(500);
+      Off(OUT_AB);
+      // then turn to the right for half a second.
+      OnRev(OUT_B, 50);
+      Wait(500);
+      Off(OUT_B);
+    } 
+    // Similarly for the right sensor
+    else if (SensorUS(IN_1) <= NEAR) {
+      TextOut(1,LCD_LINE6,"Right Bumper");
+      //the robot should go backwards for half a second,
+      OnFwd(OUT_AB, 50);
+      Wait(500);
+      Off(OUT_AB);
+      // then turn to the left for half a second.
+      OnRev(OUT_A, 50);
+      Wait(500);
+      Off(OUT_A);
+    } 
+
+    // If neither sensor is pressed, move forward
+    else{
+      OnRev(OUT_AB, 50);
+    }
+    Wait(100);
   }
 }
