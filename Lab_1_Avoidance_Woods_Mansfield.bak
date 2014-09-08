@@ -45,6 +45,5 @@ task main(){
 		else{
       OnRev(OUT_AB, 50);
 		}
-		Wait(100);
 	}
 }
