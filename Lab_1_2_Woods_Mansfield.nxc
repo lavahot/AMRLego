@@ -1,0 +1,25 @@
+
+task main(){
+  // turn on motor 1, 50% power for 3 seconds then sound beeper
+  OnFwd(OUT_A, 50);
+  Wait(3000);
+  PlayTone(1000, 100);
+
+  // turn on motor 1, 50% power, reverse for 2 seconds then sound beeper
+  OnRev(OUT_A, 50);
+  Wait(2000);
+  PlayTone(1000, 100);
+
+  // turn off motor and wait 2 seconds
+  Off(OUT_A);
+  Wait(2000);
+
+  // turn on motor 1, 100% power for 3 seconds
+  OnFwd(OUT_A, 100);
+  Wait(3000);
+
+  // stop the motor and sound beeper
+  Off(OUT_A);
+  PlayTone(1000, 100);
+  Wait(100);
+}
