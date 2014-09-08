@@ -11,7 +11,7 @@ unsigned int right_touch_counter = 0;
 /* ----------------------------- */
 //           Functions           //
 /* ----------------------------- */
-inline void beep_program(){
+sub beep_program(){
  PlayTone(500, 3000);
  Wait(4000);
  PlayTone(100, 3000);
@@ -20,7 +20,7 @@ inline void beep_program(){
  Wait(2000);
 }
 
-inline void motor_program(){
+sub motor_program(){
 // turn on motor 1, 50% power for 3 seconds then sound beeper
  OnFwd(OUT_A, 50);
  Wait(3000);
@@ -45,7 +45,7 @@ inline void motor_program(){
  Wait(100);
 }
 
-inline void sensor_program(){
+sub sensor_program(){
  SetSensorTouch(IN_1);
  SetSensorTouch(IN_4);
  while (1) // Do this forever
@@ -86,7 +86,7 @@ inline void sensor_program(){
  }
 }
 
-inline void check_sensors(){
+task check_sensors(){
 
 
 }
