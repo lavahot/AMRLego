@@ -56,7 +56,7 @@ inline void sensor_program(){
    left_flag = !left_flag;
    right_flag = false;
    left_touch_counter++;
-   // update display
+   TextOut(1,LCD_LINE6,"Left Bumper Pressed");
   }
 
   // If right sensor is pressed, toggle right flag, increment right counter, and adjust display
@@ -64,7 +64,7 @@ inline void sensor_program(){
    right_flag = !right_flag;
    left_flag = false;
    right_touch_counter++;
-   // update display
+   TextOut(1,LCD_LINE6,"Right Bumper Pressed");
   }
 
   // If left flag = true, turn left
