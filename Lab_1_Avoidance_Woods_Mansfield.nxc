@@ -13,6 +13,7 @@ task main(){
 			Off(OUT_AB);
 			// then make a larger turn (one second) either to the left or to the right.
 			OnRev(OUT_A, 50);
+      		OnFwd(OUT_B, 50);
 			Wait(1000);
 			Off(OUT_A);
 		}
@@ -25,6 +26,7 @@ task main(){
 			Off(OUT_AB);
 			// then turn to the right for half a second.
 			OnRev(OUT_B, 50);
+      		OnFwd(OUT_A, 50);
 			Wait(500);
 			Off(OUT_B);
 		} 
@@ -37,13 +39,14 @@ task main(){
 			Off(OUT_AB);
 			// then turn to the left for half a second.
 			OnRev(OUT_A, 50);
+      		OnFwd(OUT_B, 50);
 			Wait(500);
 			Off(OUT_A);
 		} 
 
 		// If neither sensor is pressed, move forward
 		else{
-      OnRev(OUT_AB, 50);
+      		OnRev(OUT_AB, 50);
 		}
 		Wait(100);
 	}

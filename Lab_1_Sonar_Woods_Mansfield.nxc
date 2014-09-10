@@ -1,4 +1,3 @@
-
 #define NEAR 15
 
 task main(){
