@@ -1,10 +1,10 @@
 mutex moveMutex;
+
 task search(){
 	while(true){
 		Acquire(moveMutex);
 		// If neither sensor is pressed, move forward
 	  OnRev(OUT_AB, 50);
-		//Wait(100);
 		Release(moveMutex);
 	}
 }
@@ -20,11 +20,10 @@ task check_sensors(){
 		  //the robot should go backwards for half a second,
 		  OnFwd(OUT_AB, 50);
 		  Wait(500);
-		  Off(OUT_AB);
 		  // then make a larger turn (one second) either to the left or to the right.
 		  OnRev(OUT_A, 50);
+		  OnFwd(OUT_B, 50)
 		  Wait(1000);
-		  Off(OUT_A);
 		  Release(moveMutex);
     }
     else{
@@ -36,8 +35,8 @@ task check_sensors(){
 		  Off(OUT_AB);
 		  // then turn to the right for half a second.
 		  OnRev(OUT_B, 50);
+		  OnFwd(OUT_A, 50);
 		  Wait(500);
-		  Off(OUT_B);
 		  Release(moveMutex);
 		}
 	} 
@@ -48,13 +47,12 @@ task check_sensors(){
       Acquire(moveMutex);
 		  TextOut(1,LCD_LINE6,"Both Bumpers");
 		  //the robot should go backwards for half a second,
-		  OnFwd(OUT_AB, 50);
+      OnFwd(OUT_AB, 50);
 		  Wait(500);
-		  Off(OUT_AB);
 		  // then make a larger turn (one second) either to the left or to the right.
 		  OnRev(OUT_A, 50);
+		  OnFwd(OUT_B, 50)
 		  Wait(1000);
-		  Off(OUT_A);
 		  Release(moveMutex);
     }
     else {
@@ -63,11 +61,10 @@ task check_sensors(){
 		  //the robot should go backwards for half a second,
 		  OnFwd(OUT_AB, 50);
 		  Wait(500);
-		  Off(OUT_AB);
 		  // then turn to the left for half a second.
 		  OnRev(OUT_A, 50);
+		  OnFwd(OUT_B, 50);
 		  Wait(500);
-		  Off(OUT_A);
 		  Release(moveMutex);
 		}
 	}
