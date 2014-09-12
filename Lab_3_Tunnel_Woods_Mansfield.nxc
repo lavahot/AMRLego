@@ -1,54 +1,93 @@
+#include "RFIDlib.nxc"
+
 #define NEAR 15
+
+bool rfidFound=false;
+
+mutex moveMutex;
+
+task search(){
+  while(true){
+    Acquire(moveMutex);
+    // If neither sensor is pressed, move forward
+    OnRev(OUT_AB, 50);
+    Release(moveMutex);
+  }
+}
+
+sub bothBumpers(){
+  Acquire(moveMutex);
+  TextOut(1,LCD_LINE6,"Both Bumpers");
+  //the robot should go backwards for half a second,
+  OnFwd(OUT_AB, 50);
+  Wait(500);
+  // then make a larger turn (one second) either to the left or to the right.
+  OnRev(OUT_A, 50);
+  OnFwd(OUT_B, 50)
+  Wait(1000);
+  Release(moveMutex);
+}
+
+sub leftBumper(){
+  Acquire(moveMutex);
+  TextOut(1,LCD_LINE6,"Left Bumper");
+  //the robot should go backwards for half a second,
+  OnFwd(OUT_AB, 50);
+  Wait(500);
+  Off(OUT_AB);
+  // then turn to the right for half a second.
+  OnRev(OUT_B, 50);
+  OnFwd(OUT_A, 50);
+  Wait(500); 
+  Release(moveMutex);
+}
+
+sub rightBumper(){
+  Acquire(moveMutex);
+  TextOut(1,LCD_LINE6,"Right Bumper");
+  //the robot should go backwards for half a second,
+  OnFwd(OUT_AB, 50);
+  Wait(500);
+  // then turn to the left for half a second.
+  OnRev(OUT_A, 50);
+  OnFwd(OUT_B, 50);
+  Wait(500);
+  Release(moveMutex);
+}
+
+task check_sensors(){
+  while (true){
+  // If the left touch sensor is pressed,
+  if (SENSOR_4 == 1) {
+    Wait(50);
+    if(SENSOR_1 == 1){
+      bothBumpers();
+    }
+    else{
+      leftBumper();
+    }
+  } 
+  // Similarly for the right sensor
+  else if (SENSOR_1 == 1) {
+    Wait(50);
+    if(SENSOR_4 == 1){
+      bothBumpers();
+    }
+    else {
+      rightBumper();
+    }
+  }
+ }
+}
+
+task check_heading(){
+  while(true){
+    
+  }
+}
 
 task main(){
   SetSensorLowspeed(IN_1);
   SetSensorLowspeed(IN_4);
-
-  while (true){
-    // If both sensors are pressed,
-    if (SensorUS(IN_4) <= NEAR && SensorUS(IN_1) <= NEAR) {
-      TextOut(1,LCD_LINE6,"Both Bumpers");
-      //the robot should go backwards for half a second,
-      OnFwd(OUT_AB, 100);
-      Wait(250);
-      Off(OUT_AB);
-      // then make a larger turn (one second) either to the left or to the right.
-      OnRev(OUT_A, 50);
-      OnFwd(OUT_B, 50);
-      Wait(1000);
-      //Off(OUT_A);
-    }
-    // If the left touch sensor is pressed,
-    else if (SensorUS(IN_4) <= NEAR) {
-      TextOut(1,LCD_LINE6,"Left Bumper");
-      //the robot should go backwards for half a second,
-      OnFwd(OUT_AB, 100);
-      Wait(500);
-      Off(OUT_AB);
-      // then turn to the right for half a second.
-      OnRev(OUT_B, 50);
-      OnFwd(OUT_A, 50);
-      Wait(500);
-      //Off(OUT_B);
-    } 
-    // Similarly for the right sensor
-    else if (SensorUS(IN_1) <= NEAR) {
-      TextOut(1,LCD_LINE6,"Right Bumper");
-      //the robot should go backwards for half a second,
-      OnFwd(OUT_AB, 100);
-      Wait(500);
-      Off(OUT_AB);
-      // then turn to the left for half a second.
-      OnRev(OUT_A, 50);
-      OnFwd(OUT_B, 50);
-      Wait(500);
-      //Off(OUT_A);
-    } 
-
-    // If neither sensor is pressed, move forward
-    else{
-      OnRev(OUT_AB, 50);
-    }
-    Wait(100);
-  }
+  Precedes(search, check_sensors);
 }
