@@ -1,0 +1,9 @@
+task main(){
+  int x;
+  SetSensorLowspeed(IN_2);
+  while(true){
+    x = SensorHTCompass(S2);
+    ResetScreen();
+    NumOut(1,LCD_LINE6,x);
+  }
+}
