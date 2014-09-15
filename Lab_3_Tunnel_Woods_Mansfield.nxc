@@ -95,11 +95,13 @@ task check_heading(){
     }
     if (SensorUS(IN_4) <= NEAR)
     {}
-  
+
   }
 }
 
 task check_tag(){
+   string data = "";
+   byte a[5];
   while(!rfidFound){
     // read the transponder
     GetRFIDArray(RFPORT,a,true);
