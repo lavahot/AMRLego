@@ -29,7 +29,7 @@ sub bothBumpers(){
   Wait(500);
   // then make a larger turn (one second) either to the left or to the right.
   OnRev(OUT_A, 50);
-  OnFwd(OUT_B, 50)
+  OnFwd(OUT_B, 50);
   Wait(1000);
   Release(moveMutex);
 }
