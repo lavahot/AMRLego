@@ -2,7 +2,13 @@
 
 #define NEAR 15
 
+#define RFPORT IN_3
+#define LBPORT IN_4
+#define RBPORT IN_1
+#define COMPPORT IN_2
+
 bool rfidFound=false;
+int init_heading=0;
 
 mutex moveMutex;
 
@@ -57,37 +63,63 @@ sub rightBumper(){
 
 task check_sensors(){
   while (true){
-  // If the left touch sensor is pressed,
-  if (SENSOR_4 == 1) {
-    Wait(50);
-    if(SENSOR_1 == 1){
-      bothBumpers();
-    }
-    else{
-      leftBumper();
-    }
-  } 
-  // Similarly for the right sensor
-  else if (SENSOR_1 == 1) {
-    Wait(50);
-    if(SENSOR_4 == 1){
-      bothBumpers();
-    }
-    else {
-      rightBumper();
+    // If the left touch sensor is pressed,
+    if (SensorUS(LBPORT) <= NEAR){
+      Wait(50);
+      if(SensorUS(RBPORT) <= NEAR){
+        bothBumpers();
+      }
+      else{
+        leftBumper();
+      }
+    } 
+    // Similarly for the right sensor
+    else if (SensorUS(RBPORT) <= NEAR){
+      Wait(50);
+      if(SensorUS(LBPORT) <= NEAR){
+        bothBumpers();
+      }
+      else {
+        rightBumper();
+      }
     }
   }
- }
 }
 
 task check_heading(){
+  int hoffset=0;
   while(true){
-    
+    if (rfidFound)
+    {
+      hoffset=180;
+    }
+    if (SensorUS(IN_4) <= NEAR)
+    {}
+  
+  }
+}
+
+task check_tag(){
+  while(!rfidFound){
+    // read the transponder
+    GetRFIDArray(RFPORT,a,true);
+    // convert data for visualization
+    RFIDDataToString(a,data);
+    // play an acknowledgment tone, if the transponder is near
+    PlayTone(10*(a[0]+a[1]+a[2]+a[3]+a[4]),10);
+    rfidFound=true;
   }
 }
 
 task main(){
-  SetSensorLowspeed(IN_1);
-  SetSensorLowspeed(IN_4);
-  Precedes(search, check_sensors);
+  SetSensorLowspeed(LBPORT);
+  SetSensorLowspeed(RBPORT);
+  SetSensorLowspeed(COMPPORT);
+
+  // set sensor port to read I2C data
+  SetSensorLowspeed(RFPORT);
+  // send dummy command to wake up sensor
+  RFIDDummy(RFPORT);
+
+  Precedes(search, check_sensors, check_tag, check_heading);
 }
