@@ -27,8 +27,14 @@ task search(){
     if (SensorUS(LBPORT) <= CLOSE){
       lpower = 1/SensorUS(LBPORT) * 50;
     }
+    else {
+      lpower=50;
+    }
     if (SensorUS(RBPORT) <= CLOSE){
       rpower = 1/SensorUS(RBPORT) * 50;
+    }
+    else{
+      rpower=50;
     }
     Release(moveMutex);
   }
