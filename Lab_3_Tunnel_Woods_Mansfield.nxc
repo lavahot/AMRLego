@@ -1,41 +1,52 @@
 #include "RFIDlib.nxc"
 
-#define CLOSE 15
-#define NEAR 7
+#define CLOSE 20
+#define NEAR 10
 
 #define RFPORT IN_3
 #define LBPORT IN_4
 #define RBPORT IN_1
 #define COMPPORT IN_2
 
-#define POWER 50
+#define POWER 75
 
-bool rfidFound=false;
+bool rfidFound = false;
 int init_heading=0;
 int lpower = 50;
 int rpower = 50;
+int ldist = 0;
+int rdist = 0;
 
 mutex moveMutex;
 
 task search(){
   while(true){
     Acquire(moveMutex);
-    // If neither sensor is pressed, move forward
-    OnFwd(OUT_B, rpower);
-    OnFwd(OUT_C, lpower);
 
+    rdist = SensorUS(RBPORT);
+    ldist = SensorUS(LBPORT);
+    
+    rpower = 100 - 100*rdist/100;
+    if(rpower < 0) rpower = 0;
+    lpower = 100 - 100*ldist/100;
+    if(lpower < 0) lpower = 0;
+    /*
     if (SensorUS(LBPORT) <= CLOSE){
-      lpower = 1/SensorUS(LBPORT) * 1000+10;
+      rpower = 30;
+      lpower = POWER;
     }
-    else {
-      lpower=POWER;
-    }
-    if (SensorUS(RBPORT) <= CLOSE){
-      rpower = 1/SensorUS(RBPORT) * 1000+10;
+    else if (SensorUS(RBPORT) <= CLOSE){
+      lpower = 30;
+      rpower = POWER;
     }
     else{
-      rpower=POWER;
+      lpower = POWER;
+      rpower = POWER;
     }
+    */
+    OnFwd(OUT_B, lpower);
+    OnFwd(OUT_C, rpower);
+    
     Release(moveMutex);
   }
 }
@@ -45,11 +56,11 @@ sub bothBumpers(){
   TextOut(1,LCD_LINE6,"Both Bumpers");
   //the robot should go backwards for half a second,
   OnRev(OUT_BC, POWER);
-  Wait(500);
+  Wait(100);
   // then make a larger turn (one second) either to the left or to the right.
   OnFwd(OUT_C, POWER);
   OnRev(OUT_B, POWER);
-  Wait(1000);
+  Wait(200);
   Release(moveMutex);
 }
 
@@ -58,11 +69,11 @@ sub leftBumper(){
   TextOut(1,LCD_LINE6,"Left Bumper");
   //the robot should go backwards for half a second,
   OnRev(OUT_BC, POWER);
-  Wait(500);
+  Wait(100);
   // then turn to the right for half a second.
   OnFwd(OUT_B, POWER);
   OnRev(OUT_C, POWER);
-  Wait(500); 
+  Wait(200);
   Release(moveMutex);
 }
 
@@ -71,11 +82,11 @@ sub rightBumper(){
   TextOut(1,LCD_LINE6,"Right Bumper");
   //the robot should go backwards for half a second,
   OnRev(OUT_BC, POWER);
-  Wait(500);
+  Wait(100);
   // then turn to the left for half a second.
   OnFwd(OUT_C, POWER);
   OnRev(OUT_B, POWER);
-  Wait(500);
+  Wait(200);
   Release(moveMutex);
 }
 
@@ -83,23 +94,23 @@ task check_sensors(){
   while (true){
     // If the left touch sensor is pressed,
     if (SensorUS(LBPORT) <= NEAR){
-      Wait(50);
-      if(SensorUS(RBPORT) <= NEAR){
-        bothBumpers();
-      }
-      else{
+      //Wait(50);
+      //if(SensorUS(RBPORT) <= NEAR){
+      //  bothBumpers();
+      //}
+      //else{
         leftBumper();
-      }
+      //}
     } 
     // Similarly for the right sensor
     else if (SensorUS(RBPORT) <= NEAR){
-      Wait(50);
-      if(SensorUS(LBPORT) <= NEAR){
-        bothBumpers();
-      }
-      else {
+      //Wait(50);
+      //if(SensorUS(LBPORT) <= NEAR){
+      //  bothBumpers();
+      //}
+      //else {
         rightBumper();
-      }
+      //}
     }
   }
 }
@@ -141,5 +152,5 @@ task main(){
   // send dummy command to wake up sensor
   RFIDDummy(RFPORT);
 
-  Precedes(search, check_sensors, check_tag, check_heading);
+  Precedes(search, check_tag);
 }
