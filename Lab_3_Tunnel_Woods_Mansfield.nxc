@@ -7,6 +7,8 @@
 #define RBPORT IN_1
 #define COMPPORT IN_2
 
+#define POWER 50
+
 bool rfidFound=false;
 int init_heading=0;
 
@@ -16,7 +18,7 @@ task search(){
   while(true){
     Acquire(moveMutex);
     // If neither sensor is pressed, move forward
-    OnRev(OUT_AB, 50);
+    OnFwd(OUT_AB, POWER);
     Release(moveMutex);
   }
 }
@@ -25,11 +27,11 @@ sub bothBumpers(){
   Acquire(moveMutex);
   TextOut(1,LCD_LINE6,"Both Bumpers");
   //the robot should go backwards for half a second,
-  OnFwd(OUT_AB, 50);
+  OnRev(OUT_AB, POWER);
   Wait(500);
   // then make a larger turn (one second) either to the left or to the right.
-  OnRev(OUT_A, 50);
-  OnFwd(OUT_B, 50);
+  OnFwd(OUT_A, POWER);
+  OnRev(OUT_B, POWER);
   Wait(1000);
   Release(moveMutex);
 }
@@ -38,12 +40,12 @@ sub leftBumper(){
   Acquire(moveMutex);
   TextOut(1,LCD_LINE6,"Left Bumper");
   //the robot should go backwards for half a second,
-  OnFwd(OUT_AB, 50);
+  OnRev(OUT_AB, POWER);
   Wait(500);
   Off(OUT_AB);
   // then turn to the right for half a second.
-  OnRev(OUT_B, 50);
-  OnFwd(OUT_A, 50);
+  OnFwd(OUT_B, POWER);
+  OnRev(OUT_A, POWER);
   Wait(500); 
   Release(moveMutex);
 }
@@ -52,11 +54,11 @@ sub rightBumper(){
   Acquire(moveMutex);
   TextOut(1,LCD_LINE6,"Right Bumper");
   //the robot should go backwards for half a second,
-  OnFwd(OUT_AB, 50);
+  OnRev(OUT_AB, POWER);
   Wait(500);
   // then turn to the left for half a second.
-  OnRev(OUT_A, 50);
-  OnFwd(OUT_B, 50);
+  OnFwd(OUT_A, POWER);
+  OnRev(OUT_B, POWER);
   Wait(500);
   Release(moveMutex);
 }
