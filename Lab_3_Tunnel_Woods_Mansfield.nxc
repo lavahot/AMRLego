@@ -1,6 +1,6 @@
 #include "RFIDlib.nxc"
 
-#define CLOSE 40
+#define CLOSE 35
 #define NEAR 20
 
 #define RFPORT IN_3
