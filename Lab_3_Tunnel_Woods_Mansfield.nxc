@@ -1,130 +1,97 @@
 #include "RFIDlib.nxc"
 
+#define MAX 40
 #define CLOSE 20
 #define NEAR 10
 
 #define RFPORT IN_3
 #define LBPORT IN_4
 #define RBPORT IN_1
-#define COMPPORT IN_2
 
 #define POWER 75
+#define MIN_POWER 10
 
 bool rfidFound = false;
-int init_heading=0;
 int lpower = 50;
 int rpower = 50;
 int ldist = 0;
 int rdist = 0;
+float m = ((POWER/2)-MIN_POWER)/(CLOSE-NEAR);
+float b = (MIN_POWER-(NEAR*m));
 
 mutex moveMutex;
 
+// If sensors do not detect anything within CLOSE, move ahead
 task search(){
   while(true){
     Acquire(moveMutex);
-
-    rdist = SensorUS(RBPORT);
-    ldist = SensorUS(LBPORT);
     
-    rpower = 100 - 100*rdist/100;
-    if(rpower < 0) rpower = 0;
-    lpower = 100 - 100*ldist/100;
-    if(lpower < 0) lpower = 0;
-    /*
-    if (SensorUS(LBPORT) <= CLOSE){
-      rpower = 30;
-      lpower = POWER;
-    }
-    else if (SensorUS(RBPORT) <= CLOSE){
-      lpower = 30;
-      rpower = POWER;
-    }
-    else{
-      lpower = POWER;
-      rpower = POWER;
-    }
-    */
-    OnFwd(OUT_B, lpower);
-    OnFwd(OUT_C, rpower);
+    OnFwd(OUT_B, POWER);
+    OnFwd(OUT_C, POWER);
     
     Release(moveMutex);
   }
 }
 
-sub bothBumpers(){
-  Acquire(moveMutex);
-  TextOut(1,LCD_LINE6,"Both Bumpers");
-  //the robot should go backwards for half a second,
-  OnRev(OUT_BC, POWER);
-  Wait(100);
-  // then make a larger turn (one second) either to the left or to the right.
-  OnFwd(OUT_C, POWER);
-  OnRev(OUT_B, POWER);
-  Wait(200);
-  Release(moveMutex);
+sub veerRight(){
+  // Reduce power in right wheel to turn right based on left sensor distance
+  lpower = POWER;
+  //rpower = m*SensorUS(LBPORT)+b;
 }
 
 sub leftBumper(){
   Acquire(moveMutex);
-  TextOut(1,LCD_LINE6,"Left Bumper");
-  //the robot should go backwards for half a second,
+  TextOut(1,LCD_LINE6,"Left Sensor");
+  //the robot should reverse momentarily,
   OnRev(OUT_BC, POWER);
   Wait(100);
-  // then turn to the right for half a second.
-  OnFwd(OUT_B, POWER);
-  OnRev(OUT_C, POWER);
-  Wait(200);
+  // then turn to the right until it cannot "see" wall anymore
+  while(SensorUS(LBPORT) <= NEAR){
+    OnFwd(OUT_B, POWER);
+    OnRev(OUT_C, POWER);
+    NumOut(1,LCD_LINE7,SensorUS(LBPORT));
+  }
   Release(moveMutex);
+}
+
+sub veerLeft(){
+  // Reduce power in left wheel to turn left based on right sensor distance
+  rpower = POWER;
+  //lpower = m*SensorUS(RBPORT)+b;
+
 }
 
 sub rightBumper(){
   Acquire(moveMutex);
-  TextOut(1,LCD_LINE6,"Right Bumper");
-  //the robot should go backwards for half a second,
+  TextOut(1,LCD_LINE6,"Right Sensor");
+  //the robot should go reverse momentarily,
   OnRev(OUT_BC, POWER);
   Wait(100);
-  // then turn to the left for half a second.
-  OnFwd(OUT_C, POWER);
-  OnRev(OUT_B, POWER);
-  Wait(200);
+  // then turn to the left until it cannot "see" wall anymore
+  while(SensorUS(RBPORT) <= NEAR){
+    OnFwd(OUT_C, POWER);
+    OnRev(OUT_B, POWER);
+    NumOut(1,LCD_LINE7,SensorUS(RBPORT));
+  }
   Release(moveMutex);
 }
 
 task check_sensors(){
   while (true){
-    // If the left touch sensor is pressed,
-    if (SensorUS(LBPORT) <= NEAR){
-      //Wait(50);
-      //if(SensorUS(RBPORT) <= NEAR){
-      //  bothBumpers();
-      //}
-      //else{
+    // If the left sensor is CLOSE or NEAR, act!
+    if (SensorUS(LBPORT) <= CLOSE){
+      if (SensorUS(LBPORT) <= NEAR){
         leftBumper();
-      //}
-    } 
+      }
+      veerRight();
+    }
     // Similarly for the right sensor
-    else if (SensorUS(RBPORT) <= NEAR){
-      //Wait(50);
-      //if(SensorUS(LBPORT) <= NEAR){
-      //  bothBumpers();
-      //}
-      //else {
+    else if (SensorUS(RBPORT) <= CLOSE){
+      if (SensorUS(RBPORT) <= NEAR){
         rightBumper();
-      //}
+      }
+      veerLeft();
     }
-  }
-}
-
-task check_heading(){
-  int hoffset=0;
-  while(true){
-    if (rfidFound)
-    {
-      hoffset=180;
-    }
-    if (SensorUS(IN_4) <= NEAR)
-    {}
-
   }
 }
 
@@ -143,12 +110,11 @@ task check_tag(){
 }
 
 task main(){
+  // set sensor ports to read I2C data
+  SetSensorLowspeed(RFPORT);
   SetSensorLowspeed(LBPORT);
   SetSensorLowspeed(RBPORT);
-  SetSensorLowspeed(COMPPORT);
-
-  // set sensor port to read I2C data
-  SetSensorLowspeed(RFPORT);
+  
   // send dummy command to wake up sensor
   RFIDDummy(RFPORT);
 
