@@ -36,7 +36,6 @@ task search(){
     }
     OnFwdReg(OUT_BOTH, POWER, OUT_REGMODE_SYNC);
     pauser++;
-    Wait(1000);
     Release(moveMutex);
   }
 }
