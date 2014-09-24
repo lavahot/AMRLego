@@ -14,6 +14,8 @@
 
 #define POWER 100
 
+#define TIME 60
+
 mutex moveMutex;
 bool timeup = false;
 int score = 0;
@@ -34,10 +36,29 @@ task search(){
     }
     OnFwdReg(OUT_BOTH, POWER, OUT_REGMODE_SYNC);
     pauser++;
+    Wait(1000);
     Release(moveMutex);
   }
 }
 
+task timer(){
+  Precedes (goHome);
+  Wait(TIME * 1000);
+  stop search;
+  stop check_tag;
+  stop check_color;
+}
+
+task goHome(){
+  int color=0;
+  while(color != 0){
+    color=SensorHTColorNum(S2);
+    ResetScreen();
+    NumOut(1,LCD_LINE6,color);
+    //add scoring here
+  }
+  StopAllTasks();
+}
 
 sub leftBumper(){
   //ResetScreen();
@@ -145,7 +166,7 @@ task main(){
   SetSensorLowspeed(RFPORT);
   SetSensorLowspeed(LBPORT);
   SetSensorLowspeed(RBPORT);
-  SetSensorLowspeed(CPORT);
+  
   // send dummy command to wake up sensor
   RFIDDummy(RFPORT);
   Precedes(search, check_sensors, check_tag);
