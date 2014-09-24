@@ -165,6 +165,7 @@ task main(){
   SetSensorLowspeed(RFPORT);
   SetSensorLowspeed(LBPORT);
   SetSensorLowspeed(RBPORT);
+  SetSensorLowspeed(CPORT);
   
   // send dummy command to wake up sensor
   RFIDDummy(RFPORT);
