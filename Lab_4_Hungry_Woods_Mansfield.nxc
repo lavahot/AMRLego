@@ -1,62 +1,53 @@
 #include "RFIDlib.nxc"
 
-#define CLOSE 40
-#define NEAR 20
+#define CLOSE 30
+#define NEAR 15
 
 #define RFPORT IN_3
 #define LBPORT IN_4
 #define RBPORT IN_1
 #define CPORT IN_2
 
-#define LEFT C
-#define RIGHT B
-#define BOTH BC
+#define LEFT OUT_C
+#define RIGHT OUT_B
+#define BOTH OUT_BC
 
 #define POWER 100
 
 #define TIME 60
 
 mutex moveMutex;
+mutex dispMutex;
 bool timeup = false;
 int score = 0;
 
 sub spin(){
-  OnFwd(OUT_LEFT);
-  OnRev(OUT_RIGHT);
-  Wait(1000;)
+  OnFwd(LEFT,50);
+  OnRev(RIGHT,50);
+  Wait(500);
 }
 
 // If sensors do not detect anything within CLOSE, move ahead
 task search(){
-  int pauser = 0;
-  while(true){
+  while(!timeup){
     Acquire(moveMutex);
-    if(pauser>1000){
-      spin();
-    }
-    OnFwdReg(OUT_BOTH, POWER, OUT_REGMODE_SYNC);
-    pauser++;
+    //spin();
+    OnFwdReg(BOTH, POWER, OUT_REGMODE_SYNC);
     Release(moveMutex);
+    //Wait(5000);
   }
-}
-
-task timer(){
-  Precedes (goHome);
-  Wait(TIME * 1000);
-  stop search;
-  stop check_tag;
-  stop check_color;
 }
 
 task goHome(){
   int color=0;
   while(color != 0){
     color=SensorHTColorNum(S2);
-    ResetScreen();
+    //ResetScreen();
+    TextOut(1,LCD_LINE1,"TIME UP!!");
     NumOut(1,LCD_LINE6,color);
     //add scoring here
   }
-  StopAllTasks();
+  //StopAllTasks();
 }
 
 sub leftBumper(){
@@ -66,10 +57,10 @@ sub leftBumper(){
   //the robot should reverse momentarily,
   // then turn to the right until it cannot "see" wall anymore
   while(SensorUS(LBPORT) <= NEAR){
-    OnRev(OUT_BOTH, POWER/2);
+    OnRev(BOTH, POWER/2);
     Wait(100);
-    OnFwd(OUT_LEFT, POWER/2);
-    OnRev(OUT_RIGHT, POWER/2);
+    OnFwd(LEFT, POWER/2);
+    OnRev(RIGHT, POWER/2);
     //NumOut(1,LCD_LINE7,SensorUS(LBPORT));
     Wait(100);
   }
@@ -83,7 +74,7 @@ sub veerRight(){
 
   while(SensorUS(LBPORT) <= CLOSE){
     if(SensorUS(LBPORT) <= NEAR) leftBumper();
-    else OnFwd(OUT_RIGHT, POWER/2);
+    else OnFwd(RIGHT, POWER/2);
   }
 }
 
@@ -93,10 +84,10 @@ sub rightBumper(){
   //the robot should go reverse momentarily,
   // then turn to the left until it cannot "see" wall anymore
   while(SensorUS(RBPORT) <= NEAR){
-  OnRev(OUT_BOTH, POWER/2);
+  OnRev(BOTH, POWER/2);
   Wait(100);
-    OnFwd(OUT_RIGHT, POWER/2);
-    OnRev(OUT_LEFT, POWER/2);
+    OnFwd(RIGHT, POWER/2);
+    OnRev(LEFT, POWER/2);
     //NumOut(1,LCD_LINE7,SensorUS(RBPORT));
     Wait(100);
   }
@@ -110,7 +101,7 @@ sub veerLeft(){
 
   while(SensorUS(RBPORT) <= CLOSE) {
     if(SensorUS(RBPORT) <= NEAR) rightBumper();
-    else OnFwd(OUT_LEFT, POWER/2);
+    else OnFwd(LEFT, POWER/2);
   }
 }
 
@@ -119,8 +110,12 @@ task check_sensors(){
     // If the left sensor is CLOSE or NEAR, act!
     if (SensorUS(LBPORT) <= CLOSE) {
       Acquire(moveMutex);
-      if (SensorUS(LBPORT) <= NEAR) leftBumper();
-      else veerRight();
+      if (SensorUS(LBPORT) <= NEAR){
+       leftBumper();
+      }
+      else{
+       veerRight();
+      }
       Release(moveMutex);
     }
 
@@ -136,10 +131,14 @@ task check_sensors(){
 
 task check_tag(){
   byte a[5];
-  while(true){
+  while(!timeup){
     GetRFIDArray(RFPORT,a,true);
     // Print and sound tone
-    ClearScreen();
+    ClearLine(LCD_LINE1);
+    ClearLine(LCD_LINE2);
+    ClearLine(LCD_LINE3);
+    ClearLine(LCD_LINE4);
+    ClearLine(LCD_LINE5);
     NumOut(0,LCD_LINE1,a[0] );
     NumOut(0,LCD_LINE2,a[1] );
     NumOut(0,LCD_LINE3,a[2] );
@@ -152,12 +151,24 @@ task check_tag(){
 
 task check_color(){
   int color=0;
-  while(true){
+  while(!timeup){
     color=SensorHTColorNum(S2);
-    ResetScreen();
+    ClearLine(LCD_LINE6);
     NumOut(1,LCD_LINE6,color);
+    if (color <12){
+       PlayTone(100*color,1000);
+    }
     //add scoring here
   }
+}
+
+task timer(){
+  Precedes(goHome);
+  Wait(TIME * 1000);
+  timeup=true;
+  //StopTask search;
+  //StopTask(check_tag);
+  //StopTask(check_color);
 }
 
 task main(){
@@ -169,5 +180,5 @@ task main(){
   
   // send dummy command to wake up sensor
   RFIDDummy(RFPORT);
-  Precedes(search, check_sensors, check_tag);
+  Precedes(search, check_sensors, check_tag, check_color, timer);
 }
