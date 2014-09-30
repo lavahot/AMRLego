@@ -14,46 +14,38 @@
 
 #define POWER 100
 
-#define TIME 60
+#define TIME 1
 
 mutex moveMutex;
 mutex dispMutex;
 bool timeup = false;
 int score = 0;
 
-sub spin(){
+sub spin(int time){
   OnFwd(LEFT,50);
   OnRev(RIGHT,50);
-  Wait(500);
+  Wait(time);
+}
+
+task spin_timer(){
+     while(!timeup){
+       Wait(20000);
+       Acquire(moveMutex);
+       spin(200);
+       Release(moveMutex);
+     }
 }
 
 // If sensors do not detect anything within CLOSE, move ahead
 task search(){
   while(!timeup){
     Acquire(moveMutex);
-    //spin();
     OnFwdReg(BOTH, POWER, OUT_REGMODE_SYNC);
     Release(moveMutex);
-    //Wait(5000);
   }
-}
-
-task goHome(){
-  int color=0;
-  while(color != 0){
-    color=SensorHTColorNum(S2);
-    //ResetScreen();
-    TextOut(1,LCD_LINE1,"TIME UP!!");
-    NumOut(1,LCD_LINE6,color);
-    //add scoring here
-  }
-  //StopAllTasks();
 }
 
 sub leftBumper(){
-  //ResetScreen();
-  //TextOut(1,LCD_LINE6,"Left Near");
-  
   //the robot should reverse momentarily,
   // then turn to the right until it cannot "see" wall anymore
   while(SensorUS(LBPORT) <= NEAR){
@@ -105,8 +97,50 @@ sub veerLeft(){
   }
 }
 
+task goHome(){
+  int color, r, g, b;
+  while(!timeup);
+  ClearScreen();
+  TextOut(1,LCD_LINE1,"TIME UP!!");
+  ReadSensorHTColor(CPORT, color, r, g, b);
+  while(r > 30 || b > 30 || g > 30){
+    ReadSensorHTColor(CPORT, color, r, g, b);
+    ClearLine(LCD_LINE2);
+    NumOut(1,LCD_LINE2,r);
+    ClearLine(LCD_LINE3);
+    NumOut(1,LCD_LINE3,g);
+    ClearLine(LCD_LINE4);
+    NumOut(1,LCD_LINE4,b);
+    if (SensorUS(LBPORT) <= 8){
+      while(SensorUS(LBPORT) <= 8){
+        OnRev(BOTH, POWER/2);
+        Wait(100);
+        OnFwd(LEFT, POWER/2);
+        OnRev(RIGHT, POWER/2);
+        Wait(100);
+      }
+    }
+    else if (SensorUS(RBPORT) <= 8){
+      while(SensorUS(RBPORT) <= 8){
+        OnRev(BOTH, POWER/2);
+        Wait(100);
+        OnFwd(LEFT, POWER/2);
+        OnRev(RIGHT, POWER/2);
+        Wait(100);
+      }
+    }
+    else{
+      OnFwd(LEFT, POWER-20);
+      OnFwd(RIGHT, POWER);
+    }
+  }
+  Off(BOTH);
+
+  //StopAllTasks();
+}
+
 task check_sensors(){
-  while (true){
+  while (!timeup){
     // If the left sensor is CLOSE or NEAR, act!
     if (SensorUS(LBPORT) <= CLOSE) {
       Acquire(moveMutex);
@@ -134,6 +168,7 @@ task check_tag(){
   while(!timeup){
     GetRFIDArray(RFPORT,a,true);
     // Print and sound tone
+    /*
     ClearLine(LCD_LINE1);
     ClearLine(LCD_LINE2);
     ClearLine(LCD_LINE3);
@@ -144,31 +179,36 @@ task check_tag(){
     NumOut(0,LCD_LINE3,a[2] );
     NumOut(0,LCD_LINE4,a[3] );
     NumOut(0,LCD_LINE5,a[4] );
-    PlayTone(10*(a[0]+a[1]+a[2]+a[3]+a[4]),1000);
-    //add scoring here
+    */
+    if(a[0]>0){
+      PlayTone(1200,500);
+    }
   }
 }
 
 task check_color(){
-  int color=0;
+  int color, r, g, b;
   while(!timeup){
-    color=SensorHTColorNum(S2);
-    ClearLine(LCD_LINE6);
-    NumOut(1,LCD_LINE6,color);
-    if (color <12){
-       PlayTone(100*color,1000);
+    ReadSensorHTColor(CPORT, color, r, g, b);
+
+    ClearLine(LCD_LINE1);
+    NumOut(1,LCD_LINE1,color);
+    ClearLine(LCD_LINE2);
+    NumOut(1,LCD_LINE2,r);
+    ClearLine(LCD_LINE3);
+    NumOut(1,LCD_LINE3,g);
+    ClearLine(LCD_LINE4);
+    NumOut(1,LCD_LINE4,b);
+
+    if(g<230 || b<230){
+       PlayTone(1000,500);
     }
-    //add scoring here
   }
 }
 
 task timer(){
-  Precedes(goHome);
-  Wait(TIME * 1000);
+  Wait(TIME*1000);
   timeup=true;
-  //StopTask search;
-  //StopTask(check_tag);
-  //StopTask(check_color);
 }
 
 task main(){
@@ -180,5 +220,5 @@ task main(){
   
   // send dummy command to wake up sensor
   RFIDDummy(RFPORT);
-  Precedes(search, check_sensors, check_tag, check_color, timer);
+  Precedes(search, spin_timer, check_color, check_tag, check_sensors, timer, goHome);
 }
