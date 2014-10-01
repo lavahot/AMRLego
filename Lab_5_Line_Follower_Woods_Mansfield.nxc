@@ -1,0 +1,220 @@
+#define LSPORT IN_4
+#define RSPORT IN_1
+#define SOUNDPORT IN_2
+#define COLORPORT IN_3
+
+#define LEFT OUT_C
+#define RIGHT OUT_B
+#define BOTH OUT_BC
+
+#define POWER 100
+
+#DEFINE YELLOW 5
+
+mutex moveMutex;
+mutex dispMutex;
+
+bool timeup = false;
+int score = 0;
+
+sub spin(int time){
+  OnFwd(LEFT,50);
+  OnRev(RIGHT,50);
+  Wait(time);
+}
+
+task spin_timer(){
+     while(!timeup){
+       Wait(20000);
+       Acquire(moveMutex);
+       spin(200);
+       Release(moveMutex);
+     }
+}
+
+// If sensors do not detect anything within CLOSE, move ahead
+task search(){
+  while(!timeup){
+    Acquire(moveMutex);
+    OnFwdReg(BOTH, POWER, OUT_REGMODE_SYNC);
+    Release(moveMutex);
+  }
+}
+
+sub leftBumper(){
+  //the robot should reverse momentarily,
+  // then turn to the right until it cannot "see" wall anymore
+  while(SensorUS(LBPORT) <= NEAR){
+    OnRev(BOTH, POWER/2);
+    Wait(100);
+    OnFwd(LEFT, POWER/2);
+    OnRev(RIGHT, POWER/2);
+    //NumOut(1,LCD_LINE7,SensorUS(LBPORT));
+    Wait(100);
+  }
+}
+
+sub veerRight(){
+  // Reduce power in right wheel to turn right
+  //ResetScreen();
+  //TextOut(1,LCD_LINE6,"Left Close");
+  //NumOut(1,LCD_LINE7,SensorUS(LBPORT));
+
+  while(SensorUS(LBPORT) <= CLOSE){
+    if(SensorUS(LBPORT) <= NEAR) leftBumper();
+    else OnFwd(RIGHT, POWER/2);
+  }
+}
+
+sub rightBumper(){
+  ResetScreen();
+  //TextOut(1,LCD_LINE6,"Right Near");
+  //the robot should go reverse momentarily,
+  // then turn to the left until it cannot "see" wall anymore
+  while(SensorUS(RBPORT) <= NEAR){
+  OnRev(BOTH, POWER/2);
+  Wait(100);
+    OnFwd(RIGHT, POWER/2);
+    OnRev(LEFT, POWER/2);
+    //NumOut(1,LCD_LINE7,SensorUS(RBPORT));
+    Wait(100);
+  }
+}
+
+sub veerLeft(){
+  // Reduce power in left wheel to turn left
+  //ResetScreen();
+  //TextOut(1,LCD_LINE6,"Right Close");
+  //NumOut(1,LCD_LINE7,SensorUS(RBPORT));
+
+  while(SensorUS(RBPORT) <= CLOSE) {
+    if(SensorUS(RBPORT) <= NEAR) rightBumper();
+    else OnFwd(LEFT, POWER/2);
+  }
+}
+
+task goHome(){
+  int color, r, g, b;
+  while(!timeup);
+  ClearScreen();
+  TextOut(1,LCD_LINE1,"TIME UP!!");
+  ReadSensorHTColor(CPORT, color, r, g, b);
+  while(r > 30 || b > 30 || g > 30){
+    ReadSensorHTColor(CPORT, color, r, g, b);
+    ClearLine(LCD_LINE2);
+    NumOut(1,LCD_LINE2,r);
+    ClearLine(LCD_LINE3);
+    NumOut(1,LCD_LINE3,g);
+    ClearLine(LCD_LINE4);
+    NumOut(1,LCD_LINE4,b);
+    if (SensorUS(LBPORT) <= 8){
+      while(SensorUS(LBPORT) <= 8){
+        OnRev(BOTH, POWER/2);
+        Wait(100);
+        OnFwd(LEFT, POWER/2);
+        OnRev(RIGHT, POWER/2);
+        Wait(100);
+      }
+    }
+    else if (SensorUS(RBPORT) <= 8){
+      while(SensorUS(RBPORT) <= 8){
+        OnRev(BOTH, POWER/2);
+        Wait(100);
+        OnFwd(LEFT, POWER/2);
+        OnRev(RIGHT, POWER/2);
+        Wait(100);
+      }
+    }
+    else{
+      OnFwd(LEFT, POWER-20);
+      OnFwd(RIGHT, POWER);
+    }
+  }
+  Off(BOTH);
+
+  //StopAllTasks();
+}
+
+task check_sensors(){
+  while (!timeup){
+    // If the left sensor is CLOSE or NEAR, act!
+    if (SensorUS(LBPORT) <= CLOSE) {
+      Acquire(moveMutex);
+      if (SensorUS(LBPORT) <= NEAR){
+       leftBumper();
+      }
+      else{
+       veerRight();
+      }
+      Release(moveMutex);
+    }
+
+    // Similarly for the right sensor
+    else if (SensorUS(RBPORT) <= CLOSE) {
+      Acquire(moveMutex);
+      if (SensorUS(RBPORT) <= NEAR) rightBumper();
+      else veerLeft();
+      Release(moveMutex);
+    }
+  }
+}
+
+task check_tag(){
+  byte a[5];
+  while(!timeup){
+    GetRFIDArray(RFPORT,a,true);
+    // Print and sound tone
+    /*
+    ClearLine(LCD_LINE1);
+    ClearLine(LCD_LINE2);
+    ClearLine(LCD_LINE3);
+    ClearLine(LCD_LINE4);
+    ClearLine(LCD_LINE5);
+    NumOut(0,LCD_LINE1,a[0] );
+    NumOut(0,LCD_LINE2,a[1] );
+    NumOut(0,LCD_LINE3,a[2] );
+    NumOut(0,LCD_LINE4,a[3] );
+    NumOut(0,LCD_LINE5,a[4] );
+    */
+    if(a[0]>0){
+      PlayTone(1200,500);
+    }
+  }
+}
+
+task check_color(){
+  int color, r, g, b;
+  while(color != YELLOW){
+    ReadSensorHTColor(CPORT, color, r, g, b);
+
+    ClearLine(LCD_LINE1);
+    NumOut(1,LCD_LINE1,color);
+    ClearLine(LCD_LINE2);
+    NumOut(1,LCD_LINE2,r);
+    ClearLine(LCD_LINE3);
+    NumOut(1,LCD_LINE3,g);
+    ClearLine(LCD_LINE4);
+    NumOut(1,LCD_LINE4,b);
+
+    if(g<230 || b<230){
+       PlayTone(1000,500);
+    }
+  }
+}
+
+task timer(){
+  Wait(TIME*1000);
+  timeup=true;
+}
+
+task main(){
+  // set sensor ports to read I2C data
+  SetSensorLowspeed(RFPORT);
+  SetSensorLowspeed(LBPORT);
+  SetSensorLowspeed(RBPORT);
+  SetSensorLowspeed(CPORT);
+  
+  // send dummy command to wake up sensor
+  RFIDDummy(RFPORT);
+  Precedes(search, spin_timer, check_color, check_tag, check_sensors, timer, goHome);
+}
