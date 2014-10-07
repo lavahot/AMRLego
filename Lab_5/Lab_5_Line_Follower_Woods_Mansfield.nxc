@@ -12,8 +12,8 @@
 #define MAXPOWER 100
 #define MINPOWER 0
 #define SLOPE (MAXPOWER-MINPOWER) / (MAXLIGHT-MINLIGHT)
-#define ROFFSET MAXPOWER - SLOPE * MAXLIGHT
-#define LOFFSET MAXPOWER + SLOPE * MINLIGHT
+//#define ROFFSET MAXPOWER - SLOPE * MAXLIGHT
+#define OFFSET MAXPOWER + SLOPE * MINLIGHT
 
 #define YELLOW 5
 
@@ -34,9 +34,9 @@ task check_sensors(){
   int lpower = 0;
   int rpower = 0;
   while (SensorHTColorNum(CPORT) != 5){
-    lpower = SLOPE * Sensor(LBPORT) + LOFFSET;
+    lpower = SLOPE * Sensor(LBPORT) + OFFSET;
     OnFwd(LEFT, lpower);
-    rpower = SLOPE * Sensor(RBPORT) + ROFFSET;
+    rpower = SLOPE * Sensor(RBPORT) + OFFSET;
     OnFwd(RIGHT, rpower);
     }
   }
