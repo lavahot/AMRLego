@@ -8,12 +8,11 @@
 #define BOTH OUT_BC
 
 #define MAXLIGHT 65
-#define MINLIGHT 35
-#define MAXPOWER 100
-#define MINPOWER 0
+#define MINLIGHT 45
+#define MAXPOWER 75
+#define MINPOWER -25
 #define SLOPE (MAXPOWER-MINPOWER) / (MAXLIGHT-MINLIGHT)
 #define OFFSET MAXPOWER - SLOPE * MAXLIGHT
-//#define OFFSET MAXPOWER + SLOPE * MINLIGHT
 
 #define YELLOW 5
 
@@ -21,25 +20,33 @@ mutex moveMutex;
 
 
 // If sensors do not detect anything within CLOSE, move ahead
+/*
 task search(){
-  while(SensorHTColorNum(CPORT) != 5){
+  while(SensorHTColorNum(COLORPORT) != 5){
     Acquire(moveMutex);
     OnFwdReg(BOTH, POWER, OUT_REGMODE_SYNC);
     Release(moveMutex);
   }
-}
+}    */
 
 
 task check_sensors(){
   int lpower = 0;
   int rpower = 0;
-  while (SensorHTColorNum(CPORT) != 5){
+
+  ClearScreen();
+
+  while (SensorHTColorNum(COLORPORT) != 5){
     lpower = SLOPE * Sensor(LBPORT) + OFFSET;
     OnFwd(LEFT, lpower);
     rpower = SLOPE * Sensor(RBPORT) + OFFSET;
     OnFwd(RIGHT, rpower);
-    }
+
+    ClearLine(LCD_LINE1);
+    NumOut(1,LCD_LINE1,SensorHTColorNum(COLORPORT));
+
   }
+  Off(BOTH);
 }
 
 task main(){
@@ -47,8 +54,8 @@ task main(){
   //SetSensorLowspeed(RFPORT);
   SetSensorLight(LBPORT);
   SetSensorLight(RBPORT);
-  SetSensorLowspeed(CPORT);
+  SetSensorLowspeed(COLORPORT);
   
   // send dummy command to wake up sensor
-  Precedes(search, check_sensors);
+  Precedes(check_sensors);
 }
