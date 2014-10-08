@@ -11,12 +11,28 @@
 \IEEEPARstart{T}{esting} MacTex. Hardware and software design goes here.
 
 \section{Problems Encountered}\label{S.problems}
-Problems encountered go here.
+We encountered a few problems in both software and hardware design. In hardware, we realized quickly that it would be very difficult to navigate the field with only one sonar sensor to detect obsticles. 
+
+In addition, we found that while using a threaded design allowed us to design individual behaviors that could cooperate with each other, there were time where they would instead compete and could not terminate on command without additional firmware on the NXT.
+
+There also was a problem with how the robot navigated the field, that is, its search methodology. We found that a simple process of "bouncing" off of the walls of the field could cause a fixed pattern to develop where the robot would cover the same ground over and over again. 
+
+We also had severe problems with the color sensor detecting the white background of the field reliably, as well as distinguishing the black go home area from the white background.
+
+Lastly, while our original "go home" strategy of ramming into the wall at an angle and then hugging the wall until home was reached was eventually successful, albeit rediculous, it would take a lot of time, especially when it touched the wall on the wrong side of the home area and have to go around the whole track to reach the home area. Another approach using bumping would sometimes miss the home area by a small amount and have to loop again.
 
 \section{Solutions}\label{S.solutions}
-Solutions to problems go here.
+We decided to use dual sonar sensors at a slight angle like our previous design to overcome the navigation problem. Unlike our previous design, we put the two sonar sensors much closer together and lower to meet the level of the walls of the field. This eliminated the gap in ultrasonic "vision" at the front of the robot which would sometimes cause the robot to jam straight onto a wall and become stuck.
+
+Going over the mutex handoffs allowed us to find spot where two threads could have control of the motor systems at the same time, or in rapid succession. Some restructuring of the tasks fixed this issue. In addition, we used a global bool variable to mark the mode of the robot in which certain tasks would fall out of their loops when the bool was changed.
+
+In order to stop the ground coverage loop, we added a spinning task that would slightly alter the robot's orientation periodically to introduce randomness into the robot's path. This proved to be very successful at covering more area of the field quickly. 
+
+We had to play a lot with the mounted height of the color sensor in order to get a reliable reading. In addition, using the ReadSensorHTColor() function proved to give us much more reliable color readings with a finer grasp of the color makeup in RGB space. 
+
+Finally, by increasing the backward duration of the robot's left turn movement and introducing arching and right turn correction for the right sonic sensor, we were able to get the robot to get home within one lap around the field every time.
 
 \section{Unsolved Problems}\label{S.unsolved}
-Unsolved problems go here.
+During the competition, we scored almost no points for RFID detection, despite the RFID sensor going over the RFID tags several times. Especially for the smaller RFID tags, the RFID sensor seemed to have a very difficult issue with detecting tags. We believe this was due to the velocity of the robot, but it could also be due to power output from the RFID sensor or it's polling frequency or the proximity to the floor. 
 
 \end{document}
