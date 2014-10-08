@@ -1,5 +1,5 @@
-#define LBPORT IN_4
-#define RBPORT IN_1
+#define LPORT IN_4
+#define RPORT IN_1
 #define SOUNDPORT IN_2
 #define COLORPORT IN_3
 
@@ -17,29 +17,20 @@
 #define YELLOW 5
 
 mutex moveMutex;
+bool cheering = false;
 
 
-// If sensors do not detect anything within CLOSE, move ahead
-/*
-task search(){
-  while(SensorHTColorNum(COLORPORT) != 5){
-    Acquire(moveMutex);
-    OnFwdReg(BOTH, POWER, OUT_REGMODE_SYNC);
-    Release(moveMutex);
-  }
-}    */
-
-
-task check_sensors(){
+// Follow the line!
+task follow_line(){
   int lpower = 0;
   int rpower = 0;
 
   ClearScreen();
 
   while (SensorHTColorNum(COLORPORT) != 5){
-    lpower = SLOPE * Sensor(LBPORT) + OFFSET;
+    lpower = SLOPE * Sensor(LPORT) + OFFSET;
     OnFwd(LEFT, lpower);
-    rpower = SLOPE * Sensor(RBPORT) + OFFSET;
+    rpower = SLOPE * Sensor(RPORT) + OFFSET;
     OnFwd(RIGHT, rpower);
 
     ClearLine(LCD_LINE1);
@@ -49,13 +40,47 @@ task check_sensors(){
   Off(BOTH);
 }
 
+task check_sound(){
+  int sound_level = 0;
+  // Don't do anything until it finds the color
+  while(SensorHTColorNum(COLORPORT) != 5);
+
+  ClearScreen();
+
+  while(true){
+    if (Sensor(SOUNDPORT) > 60){
+      cheering = true;
+    }
+    else if (Sensor(SOUNDPORT) <= 60){
+      cheering = false;
+    }
+    ClearLine(LCD_LINE1);
+    NumOut(1,LCD_LINE1,Sensor(SOUNDPORT));
+  }
+}
+
+task find_home(){
+  // Don't do anything until it finds the color
+  while(SensorHTColorNum(COLORPORT) != 5);
+
+  if(cheering == false){
+    OnFwd(LEFT, 50);
+    OnRev(RIGHT, 50);
+  }
+  else if (cheering == true){
+    OnFwdReg(BOTH, 95, OUT_REGMODE_SYNC);
+  }
+
+
+}
+
 task main(){
-  // set sensor ports to read I2C data
-  //SetSensorLowspeed(RFPORT);
-  SetSensorLight(LBPORT);
-  SetSensorLight(RBPORT);
+  // Configure sensor ports
+  SetSensorLight(LPORT);
+  SetSensorLight(RPORT);
   SetSensorLowspeed(COLORPORT);
+  SetSensorSound(SOUNDPORT);
   
-  // send dummy command to wake up sensor
-  Precedes(check_sensors);
+  // Start all tasks
+  Precedes(follow_line, check_sound, find_home);
 }
