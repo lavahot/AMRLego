@@ -18,6 +18,7 @@
 
 mutex moveMutex;
 bool cheering = false;
+bool seek_home = false;
 
 
 // Follow the line!
@@ -27,7 +28,7 @@ task follow_line(){
 
   ClearScreen();
 
-  while (SensorHTColorNum(COLORPORT) != 5){
+  while (SensorHTColorNum(COLORPORT) != 5 && seek_home != true){
     lpower = SLOPE * Sensor(LPORT) + OFFSET;
     OnFwd(LEFT, lpower);
     rpower = SLOPE * Sensor(RPORT) + OFFSET;
@@ -45,34 +46,25 @@ task check_sound(){
   // Don't do anything until it finds the color
   while(SensorHTColorNum(COLORPORT) != 5);
 
+  seek_home = true;
+
   ClearScreen();
 
   while(true){
     if (Sensor(SOUNDPORT) > 60){
       cheering = true;
+      OnFwdReg(BOTH, 75, OUT_REGMODE_SYNC);
     }
     else if (Sensor(SOUNDPORT) <= 60){
       cheering = false;
+      OnFwd(LEFT, 75);
+      OnRev(RIGHT, 75);
     }
     ClearLine(LCD_LINE1);
     NumOut(1,LCD_LINE1,Sensor(SOUNDPORT));
   }
 }
 
-task find_home(){
-  // Don't do anything until it finds the color
-  while(SensorHTColorNum(COLORPORT) != 5);
-
-  if(cheering == false){
-    OnFwd(LEFT, 50);
-    OnRev(RIGHT, 50);
-  }
-  else if (cheering == true){
-    OnFwdReg(BOTH, 95, OUT_REGMODE_SYNC);
-  }
-
-
-}
 
 task main(){
   // Configure sensor ports
@@ -82,5 +74,5 @@ task main(){
   SetSensorSound(SOUNDPORT);
   
   // Start all tasks
-  Precedes(follow_line, check_sound, find_home);
+  Precedes(follow_line, check_sound);
 }
