@@ -1,7 +1,5 @@
-#include "HTSMUX-driver.h"
-
-#define LPORT msensor_S1_4
-#define RPORT msensor_S1_1
+#define LPORT IN_4
+#define RPORT IN_1
 #define SOUNDPORT IN_2
 #define COLORPORT IN_3
 
@@ -31,9 +29,9 @@ task follow_line(){
   ClearScreen();
 
   while (SensorHTColorNum(COLORPORT) != 5 && seek_home != true){
-    lpower = SLOPE * smuxSensorLegoLightNorm(LPORT) + OFFSET;
+    lpower = SLOPE * Sensor(LPORT) + OFFSET;
     OnFwd(LEFT, lpower);
-    rpower = SLOPE * smuxSensorLegoLightNorm(RPORT) + OFFSET;
+    rpower = SLOPE * Sensor(RPORT) + OFFSET;
     OnFwd(RIGHT, rpower);
 
     ClearLine(LCD_LINE1);
@@ -70,19 +68,11 @@ task check_sound(){
 
 task main(){
   // Configure sensor ports
-  // smuxSetSensorLight(LPORT);
-  // smuxSetSensorLight(RPORT);
+  SetSensorLight(LPORT);
+  SetSensorLight(RPORT);
   SetSensorLowspeed(COLORPORT);
   SetSensorSound(SOUNDPORT);
   
-  SetSensorLowspeed(S1);
-
-  if (!HTSMUXscanPorts(S1)) {
-    // Scan failed, handle the error
-    TextOut(0, LCD_LINE1, "Scan failed!");
-    Wait(1000);
-  }
-
   // Start all tasks
   Precedes(follow_line, check_sound);
 }
