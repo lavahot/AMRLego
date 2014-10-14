@@ -1,16 +1,17 @@
 #define LPORT IN_4
 #define RPORT IN_1
-#define SOUNDPORT IN_2
-#define COLORPORT IN_3
+#define SOUNDPORT IN_3
+#define COLORPORT IN_2
 
 #define LEFT OUT_C
 #define RIGHT OUT_B
 #define BOTH OUT_BC
 
-#define MAXLIGHT 65
+#define MAXLIGHT 64
 #define MINLIGHT 45
 #define MAXPOWER 75
-#define MINPOWER -25
+#define MINPOWER -5
+
 #define SLOPE (MAXPOWER-MINPOWER) / (MAXLIGHT-MINLIGHT)
 #define OFFSET MAXPOWER - SLOPE * MAXLIGHT
 
@@ -19,19 +20,44 @@
 mutex moveMutex;
 bool cheering = false;
 bool seek_home = false;
+bool on_line = false;
 
 
 // Follow the line!
 task follow_line(){
   int lpower = 0;
   int rpower = 0;
+  bool findline = false;
 
   ClearScreen();
+
+  while(!on_line){
+    if(Sensor(LPORT) > 50){
+      OnFwd(LEFT, 70);
+      OnFwd(RIGHT,75);
+    }
+
+    else{
+      OnFwd(RIGHT,75);
+      OnRev(LEFT,15);
+    }
+    if(Sensor(RPORT) < 50 && !findline){
+      findline=true;
+    }
+    if(findline && Sensor(RPORT) > 50){
+      on_line=true;
+    }
+  }
+
+    lpower = SLOPE * Sensor(LPORT) + OFFSET;
+    OnFwd(LEFT, lpower);
+    rpower = SLOPE * Sensor(RPORT) + OFFSET+5;
+    OnFwd(RIGHT, rpower);
 
   while (SensorHTColorNum(COLORPORT) != 5 && seek_home != true){
     lpower = SLOPE * Sensor(LPORT) + OFFSET;
     OnFwd(LEFT, lpower);
-    rpower = SLOPE * Sensor(RPORT) + OFFSET;
+    rpower = SLOPE * Sensor(RPORT) + OFFSET+5;
     OnFwd(RIGHT, rpower);
 
     ClearLine(LCD_LINE1);
@@ -53,12 +79,13 @@ task check_sound(){
   while(true){
     if (Sensor(SOUNDPORT) > 60){
       cheering = true;
-      OnFwdReg(BOTH, 75, OUT_REGMODE_SYNC);
+      OnFwd(LEFT, 93);
+      OnFwd(RIGHT,100);
     }
     else if (Sensor(SOUNDPORT) <= 60){
       cheering = false;
-      OnFwd(LEFT, 75);
-      OnRev(RIGHT, 75);
+      OnFwd(LEFT, 50);
+      OnRev(RIGHT, 50);
     }
     ClearLine(LCD_LINE1);
     NumOut(1,LCD_LINE1,Sensor(SOUNDPORT));
