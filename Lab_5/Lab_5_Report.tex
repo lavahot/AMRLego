@@ -55,7 +55,7 @@ The software design for this challenge is broken into three specific portions. F
 
 The first part of the program is the method of finding the line. We know which direction the robot will approach the line from, so we tell the robot to move forward until the left sensor sees the line at which point it should turn left until the right sensor has passed over the line once. In all cases, this will result in the robot being centered on the line, and oriented in the right direction. 
 
-The line following portion of the program involved the robot checks both the left and right sensors and adjust the motor speeds based on the readings. The left and right motors depend only on the sensor on that side are their speeds are proportionally controlled according to the relationship 
+During the line following portion of the program, the robot monitors the left and right light sensors and adjust the motor powers based on the readings. The motor powers depend only on the corresponding left or right sensor and are proportionally controlled according to the relationship 
 
 \begin{equation}\label{E.motor_speed}
     P_{motor} = \frac{P_{max}-P_{min}}{I_{max}-I_{min}}I_{sensor} + offset
