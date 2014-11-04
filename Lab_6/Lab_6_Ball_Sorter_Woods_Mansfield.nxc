@@ -1,0 +1,68 @@
+#define LPORT IN_4
+#define RPORT IN_1
+#define SOUNDPORT IN_3
+#define COLORPORT IN_2
+
+#define LEFT OUT_C
+#define RIGHT OUT_B
+#define BOTH OUT_BC
+
+#define MAXPOWER 75
+#define MINPOWER -5
+
+mutex moveMutex;
+mutex ballMutex;
+
+
+// Move task - this task should move between designated points
+
+
+// Spin task - this task should spin the robot in a complete circle to identify possible ball locaions 
+// using d/d_theta(d/d_theta(US_distance))
+
+
+// Drop ball task - this task should activate once a ball is "captured" and needs to be sorted. Robot 
+// should drive to the appropriate end of the field, raise the claw when it passes into the black zone,
+// and continue forward for another 500 ms
+
+// Capture task - this task should lower the claw to capture the ball
+sub capture(){
+  Acquire(ballMutex);
+  PosRegEnable(OUT_A);
+  PosRegSetAngle(OUT_A, 360);
+  Wait(5000);
+  PosRegAddAngle(OUT_A, 360);
+  Wait(5000);
+  Release(ballMutex);
+}
+
+
+// Check color sensor task - this task should monitor the color sensor to see if there is a ball to
+// capture. If so, activate capture task
+task check_color(){
+  int color;
+  while(1){
+    color = SensorHTColorNum(COLORPORT);
+    if(color < 12 || color > 0){
+      capture();
+    }
+  }
+}
+
+
+// Check compass task - this task is responsible for updating the heading of the robot
+
+
+// Check ultrasonic sensor task - this task is responsible for update the sonar values
+
+
+task main(){
+  // Configure sensor ports
+  SetSensorLight(LPORT);
+  SetSensorLight(RPORT);
+  SetSensorLowspeed(COLORPORT);
+  SetSensorSound(SOUNDPORT);
+  
+  // Start all tasks
+  Precedes(check_color);
+}
