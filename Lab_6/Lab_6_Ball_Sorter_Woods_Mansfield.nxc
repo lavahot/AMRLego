@@ -4,7 +4,7 @@
 #define COMPASSPORT msensor_S3_1
 #define LIGHTSENSOR msensor_S3_2
 #define COLORPORT IN_2
-#define BTN BTN1
+#define BTN BTN4
 
 #define LEFT OUT_C
 #define RIGHT OUT_B
@@ -28,6 +28,20 @@ int light;
 int color;
 int odo_dist;
 int ldist, rdist;
+
+// Capture task - this task should lower the claw to capture the ball
+sub capture(){
+  Acquire(ballMutex);
+  PosRegSetAngle(OUT_A, 0);
+  Release(ballMutex);
+}
+
+// Let go task - this task should raise the claw to let the ball go
+sub let_go(){
+  Acquire(ballMutex);
+  PosRegSetAngle(OUT_A, -30);
+  Release(ballMutex);
+}
 
 // Set heading task - this function spins the robot in place to face a certain heading
 sub set_heading(int des_heading){
@@ -74,7 +88,7 @@ sub acquire(int des_heading, int est_dist){
   maintain = true;
   maintain_heading(des_heading);
   while(odo_dist < est_dist && 1 < color < 10);
-  capture;
+  capture();
   maintain = false;
   Release(moveMutex);
 }
@@ -104,26 +118,10 @@ sub sort_ball(){
     maintain = true;
     maintain_heading(home);
     while(light > DARK);
-    maintain  false;
+    maintain = false;
   }
 
   Release(moveMutex);
-}
-
-// Capture task - this task should lower the claw to capture the ball
-sub capture(){
-  Acquire(ballMutex);
-  PosRegSetAngle(OUT_A, 360);
-  PosRegAddAngle(OUT_A, 360);
-  Release(ballMutex);
-}
-
-// Let go task - this task should raise the claw to let the ball go
-sub let_go(){
-  Acquire(ballMutex);
-  PosRegSetAngle(OUT_A, 360);
-  PosRegAddAngle(OUT_A, 360);
-  Release(ballMutex);
 }
 
 sub pushover(){
@@ -133,51 +131,51 @@ sub pushover(){
   //wait for a set period of time
 }
 
-
-// Check color sensor task - this task should monitor the color sensor to see if there is a ball to
-// capture. If so, activate capture task
-task check_color(){
-  while(1){
-    color = SensorHTColorNum(COLORPORT);
-  }
-}
-
-
-// Check compass task - this task is responsible for updating the heading of the robot
-task check_compass(){
+// Check sensors task - this task is responsible for calibrating the robot headings
+// and check the sensors along the way
+task check_sensors(){
   // Calibrate home and destination headings by taking a measurement facing each direction
-  while(abs(home-destination) > 182 && abs(home-destination) < 178){
-    ClearScreen();
-    TextOut(1,LCD_LINE2,"Not Calibrated");
-    while(!ButtonState(BTN));
+  ClearScreen();
+  TextOut(1,LCD_LINE1,"Not Calibrated");
+  while(!ButtonState(BTN));
+  Wait(300);
 
-    home = smuxSensorHTCompass(COMPASSPORT);
-    TextOut(1,LCD_LINE2,"Home Set...");
-    while(!ButtonState(BTN));
+  home = smuxSensorHTCompass(COMPASSPORT);
+  TextOut(1,LCD_LINE2,"Home Set...");
+  while(!ButtonState(BTN));
+  Wait(300);
 
-    destination = smuxSensorHTCompass(COMPASSPORT);
-    TextOut(1,LCD_LINE3,"Destination Set.");
-    while(!ButtonState(BTN));
-  }
+  destination = smuxSensorHTCompass(COMPASSPORT);
+  TextOut(1,LCD_LINE3,"Destination Set.");
+  while(!ButtonState(BTN));
+  Wait(300);
 
   ClearScreen();
-  TextOut(1,LCD_LINE1,"Ready to begin...")
-  calibrated = true;
+  TextOut(1,LCD_LINE1,"Ready to begin...");
   while(!ButtonState(BTN));
+  calibrated = true;
   ClearScreen();
 
   while(1){
     heading = smuxSensorHTCompass(COMPASSPORT);
-  }
-
-}
-
-
-// Check ultrasonic sensor task - this task is responsible for update the sonar values
-task check_ultrasonic(){
-  while(1){
     ldist = SensorUS(LPORT);
     rdist = SensorUS(RPORT);
+    color = SensorHTColorNum(COLORPORT);
+  }
+}
+
+task ball_finder(){
+  while(!calibrated);
+  let_go();
+  while(1){
+    ClearLine(LCD_LINE1);
+    NumOut(1,LCD_LINE1,color);
+    if(color > 1 && color < 10){
+      capture();
+      Wait(2000);
+      let_go();
+      Wait(2000);
+    }
   }
 }
 
@@ -194,8 +192,9 @@ task main(){
     TextOut(0, LCD_LINE1, "Scan failed!");
     Wait(1000);
   }
-  PosRegEnable(OUT_A);
+  SetSensorLowspeed(COMPASSPORT);
+  PosRegEnable(OUT_A,54,36,24);
   
   // Start all tasks
-  Precedes(check_compass, check_color);
+  Precedes(check_sensors, ball_finder);
 }
