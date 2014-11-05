@@ -1,38 +1,123 @@
 #define LPORT IN_4
 #define RPORT IN_1
-#define SOUNDPORT IN_3
+#define COMPASSPORT IN_3
 #define COLORPORT IN_2
+#define BTN BTN1
 
 #define LEFT OUT_C
 #define RIGHT OUT_B
 #define BOTH OUT_BC
 
-#define MAXPOWER 75
-#define MINPOWER -5
+#define POWER 75
+
+#define DARK 40
 
 mutex moveMutex;
 mutex ballMutex;
 
+bool calibrated = false;
+bool sorting = false;
+bool maintain = false;
 
-// Move task - this task should move between designated points
+int heading, home, destination;
+int light;
+int color;
+int odo_dist;
 
+// Set heading task - this function spins the robot in place to face a certain heading
+sub set_heading(int des_heading){
+  int error;
+  Acquire(moveMutex);
+  error = des_heading - heading;
+  while(abs(error) > 2){
+    OnFwd(LEFT, 5*error);
+    OnRev(RIGHT, 5*error);
+  }
+  Off(BOTH);
+  Release(moveMutex);
+}
 
-// Spin task - this task should spin the robot in a complete circle to identify possible ball locaions 
+// Maintain heading task - this task should drive forward while maintaining a given heading
+sub maintain_heading(int des_heading){
+  int error;
+  Acquire(moveMutex);
+  while(maintain){
+    error = des_heading - heading;
+    OnFwd(LEFT, POWER+1*error);
+    OnFwd(RIGHT, POWER-1*error);
+  }
+  Off(BOTH);
+  Release(moveMutex);
+}
+
+// Search task - this task should spin the robot in a complete circle to identify possible ball locaions 
 // using d/d_theta(d/d_theta(US_distance))
+sub search(){
+  //spin
+  //record each dist value for each heading value
+  //stop
+  //indentify closest ball
+    //get second derivative
+    //on rising/falling edge there is a ball
+    //if dist at that heading is less than current des dist, set des heading and dist
+}
+
+// Acquire task - this task should drive towards the closest ball, and capture it
+sub acquire(int des_heading, int est_dist){
+  Acquire(moveMutex);
+  set_heading(des_heading);
+  maintain = true;
+  maintain_heading(des_heading);
+  while(odo_dist < est_dist && 1 < color < 10);
+  capture;
+  maintain = false;
+  Release(moveMutex);
+}
 
 
-// Drop ball task - this task should activate once a ball is "captured" and needs to be sorted. Robot 
-// should drive to the appropriate end of the field, raise the claw when it passes into the black zone,
+// Sort ball task - this task should drive to the appropriate end of the field, raise the claw when it passes into the black zone,
 // and continue forward for another 500 ms
+sub sort_ball(){
+  int color;
+  Acquire(moveMutex);
+  color = SensorHTColorNum(COLORPORT);
+
+  // If color is blue, set heading to destination and travel there
+  if(color = 2){
+    set_heading(destination);
+    maintain = true;
+    maintain_heading(destination);
+    while(light > DARK);
+    let_go();
+    Wait(500);
+    maintain = false;
+  }
+
+  // Else, if it is red, set heading to home and travel there
+  else if(7 < color < 10){
+    set_heading(home);
+    maintain = true;
+    maintain_heading(home);
+    while(light > DARK);
+    maintain  false;
+  }
+
+  Release(moveMutex);
+}
 
 // Capture task - this task should lower the claw to capture the ball
 sub capture(){
   Acquire(ballMutex);
-  PosRegEnable(OUT_A);
   PosRegSetAngle(OUT_A, 360);
-  Wait(5000);
   PosRegAddAngle(OUT_A, 360);
-  Wait(5000);
+  Release(ballMutex);
+}
+
+// Let go task - this task should raise the claw to let the ball go
+sub let_go(){
+  Acquire(ballMutex);
+  PosRegSetAngle(OUT_A, 360);
+  PosRegAddAngle(OUT_A, 360);
   Release(ballMutex);
 }
 
@@ -40,17 +125,40 @@ sub capture(){
 // Check color sensor task - this task should monitor the color sensor to see if there is a ball to
 // capture. If so, activate capture task
 task check_color(){
-  int color;
   while(1){
     color = SensorHTColorNum(COLORPORT);
-    if(color < 12 || color > 0){
-      capture();
-    }
   }
 }
 
 
 // Check compass task - this task is responsible for updating the heading of the robot
+task check_compass(){
+  // Calibrate home and destination headings by taking a measurement facing each direction
+  while(178 > abs(home-destination) > 182){
+    ClearScreen();
+    TextOut(1,LCD_LINE2,"Not Calibrated");
+    while(!ButtonState(BTN));
+
+    home = SensorHTCompass(COMPASSPORT);
+    TextOut(1,LCD_LINE2,"Home Set...");
+    while(!ButtonState(BTN));
+
+    destination = SensorHTCompass(COMPASSPORT);
+    TextOut(1,LCD_LINE3,"Destination Set.");
+    while(!ButtonState(BTN));
+  }
+
+ClearScreen();
+TextOut(1,LCD_LINE1,"Ready to begin...")
+calibrated = true;
+while(!ButtonState(BTN));
+ClearScreen();
+
+while(1){
+  heading = SensorHTCompass(COMPASSPORT);
+}
+
+}
 
 
 // Check ultrasonic sensor task - this task is responsible for update the sonar values
@@ -61,8 +169,10 @@ task main(){
   SetSensorLight(LPORT);
   SetSensorLight(RPORT);
   SetSensorLowspeed(COLORPORT);
+  SetSensorLowspeed(COMPASSPORT);
   SetSensorSound(SOUNDPORT);
+  PosRegEnable(OUT_A);
   
   // Start all tasks
-  Precedes(check_color);
+  Precedes(check_compass, check_color);
 }
