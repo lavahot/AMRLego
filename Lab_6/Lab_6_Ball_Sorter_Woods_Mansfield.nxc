@@ -23,6 +23,7 @@ int heading, home, destination;
 int light;
 int color;
 int odo_dist;
+int ldist, rdist;
 
 // Set heading task - this function spins the robot in place to face a certain heading
 sub set_heading(int des_heading){
@@ -162,12 +163,18 @@ while(1){
 
 
 // Check ultrasonic sensor task - this task is responsible for update the sonar values
+task check_ultrasonic(){
+  while(1){
+    ldist = SensorUS(LPORT);
+    rdist = SensorUS(RPORT);
+  }
+}
 
 
 task main(){
   // Configure sensor ports
-  SetSensorLight(LPORT);
-  SetSensorLight(RPORT);
+  SetSensorLowspeed(LPORT);
+  SetSensorLowspeed(RPORT);
   SetSensorLowspeed(COLORPORT);
   SetSensorLowspeed(COMPASSPORT);
   SetSensorSound(SOUNDPORT);
