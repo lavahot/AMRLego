@@ -21,7 +21,6 @@ mutex ballMutex;
 
 bool calibrated = false;
 bool sorting = false;
-bool maintain = false;
 
 int heading, home, destination;
 int light;
@@ -60,12 +59,12 @@ sub set_heading(int des_heading){
 sub maintain_heading(int des_heading){
   int error;
   Acquire(moveMutex);
-  while(maintain){
+  //while(maintain){
     error = des_heading - heading;
     OnFwd(LEFT, POWER+1*error);
     OnFwd(RIGHT, POWER-1*error);
-  }
-  Off(BOTH);
+  //}
+  //Off(BOTH);
   Release(moveMutex);
 }
 
@@ -85,7 +84,6 @@ sub search(){
 sub acquire(int des_heading, int est_dist){
   Acquire(moveMutex);
   set_heading(des_heading);
-  maintain = true;
   maintain_heading(des_heading);
   while(odo_dist < est_dist && 1 < color < 10);
   capture();
@@ -98,34 +96,31 @@ sub acquire(int des_heading, int est_dist){
 // and continue forward for another 500 ms
 sub sort_ball(){
   int color;
-  Acquire(moveMutex);
   color = SensorHTColorNum(COLORPORT);
+  int desHead=0;
 
   // If color is blue, set heading to destination and travel there
   if(color = 2){
-    set_heading(destination);
-    maintain = true;
+    desHead=destination;
+  }
+  else if(color < 10 && color > 7){
+    desHead=home;
+  }
+  set_heading(desHead);
+  while(light > DARK){
     maintain_heading(destination);
-    while(light > DARK);
-    let_go();
-    Wait(500);
-    maintain = false;
   }
+  let_go();
+  Wait(500);
 
-  // Else, if it is red, set heading to home and travel there
-  else if(7 < color < 10){
-    set_heading(home);
-    maintain = true;
-    maintain_heading(home);
-    while(light > DARK);
-    maintain = false;
-  }
-
+  Acquire(moveMutex);
+  Off(BOTH);
   Release(moveMutex);
 }
 
 sub pushover(){
   //align to home heading
+  //set_heading(desHome);
   //go 
   //when black, let_go
   //wait for a set period of time
