@@ -1,6 +1,8 @@
 #define LPORT IN_4
 #define RPORT IN_1
-#define COMPASSPORT IN_3
+#define MUXPORT IN_3
+#define COMPASSPORT msensor_S3_1
+#define LIGHTSENSOR msensor_S3_2
 #define COLORPORT IN_2
 #define BTN BTN1
 
@@ -11,6 +13,8 @@
 #define POWER 75
 
 #define DARK 40
+
+#include "../HTSMUX/HTSMUX-driver.h"
 
 mutex moveMutex;
 mutex ballMutex;
@@ -122,6 +126,13 @@ sub let_go(){
   Release(ballMutex);
 }
 
+sub pushover(){
+  //align to home heading
+  //go 
+  //when black, let_go
+  //wait for a set period of time
+}
+
 
 // Check color sensor task - this task should monitor the color sensor to see if there is a ball to
 // capture. If so, activate capture task
@@ -135,29 +146,29 @@ task check_color(){
 // Check compass task - this task is responsible for updating the heading of the robot
 task check_compass(){
   // Calibrate home and destination headings by taking a measurement facing each direction
-  while(178 > abs(home-destination) > 182){
+  while(abs(home-destination) > 182 && abs(home-destination) < 178){
     ClearScreen();
     TextOut(1,LCD_LINE2,"Not Calibrated");
     while(!ButtonState(BTN));
 
-    home = SensorHTCompass(COMPASSPORT);
+    home = smuxSensorHTCompass(COMPASSPORT);
     TextOut(1,LCD_LINE2,"Home Set...");
     while(!ButtonState(BTN));
 
-    destination = SensorHTCompass(COMPASSPORT);
+    destination = smuxSensorHTCompass(COMPASSPORT);
     TextOut(1,LCD_LINE3,"Destination Set.");
     while(!ButtonState(BTN));
   }
 
-ClearScreen();
-TextOut(1,LCD_LINE1,"Ready to begin...")
-calibrated = true;
-while(!ButtonState(BTN));
-ClearScreen();
+  ClearScreen();
+  TextOut(1,LCD_LINE1,"Ready to begin...")
+  calibrated = true;
+  while(!ButtonState(BTN));
+  ClearScreen();
 
-while(1){
-  heading = SensorHTCompass(COMPASSPORT);
-}
+  while(1){
+    heading = smuxSensorHTCompass(COMPASSPORT);
+  }
 
 }
 
@@ -176,8 +187,13 @@ task main(){
   SetSensorLowspeed(LPORT);
   SetSensorLowspeed(RPORT);
   SetSensorLowspeed(COLORPORT);
-  SetSensorLowspeed(COMPASSPORT);
-  SetSensorSound(SOUNDPORT);
+  SetSensorLowspeed(MUXPORT);
+  //SetSensorSound(SOUNDPORT);
+  if (!HTSMUXscanPorts(MUXPORT)) {
+    // Scan failed, handle the error
+    TextOut(0, LCD_LINE1, "Scan failed!");
+    Wait(1000);
+  }
   PosRegEnable(OUT_A);
   
   // Start all tasks
