@@ -85,7 +85,7 @@ sub acquire(int des_heading, int est_dist){
   Acquire(moveMutex);
   set_heading(des_heading);
   maintain_heading(des_heading);
-  while(odo_dist < est_dist && 1 < color < 10);
+  while(odo_dist < est_dist && color < 10 && color > 1);
   capture();
   maintain = false;
   Release(moveMutex);
@@ -110,7 +110,7 @@ sub sort_ball(){
   while(light > DARK){
     maintain_heading(destination);
   }
-  let_go();
+  let_go(50);
   Wait(500);
 
   Acquire(moveMutex);
@@ -161,7 +161,7 @@ task check_sensors(){
 
 task ball_finder(){
   while(!calibrated);
-  let_go();
+  let_go(30);
   while(1){
     ClearLine(LCD_LINE1);
     NumOut(1,LCD_LINE1,color);
