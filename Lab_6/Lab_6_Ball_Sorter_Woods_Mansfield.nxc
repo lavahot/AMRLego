@@ -2,7 +2,7 @@
 #define RPORT IN_1
 #define COMPASSPORT IN_3
 #define COLORPORT IN_2
-#define BTN BTN1
+#define BTN BTN4
 
 #define LEFT OUT_C
 #define RIGHT OUT_B
@@ -24,6 +24,20 @@ int light;
 int color;
 int odo_dist;
 int ldist, rdist;
+
+// Capture task - this task should lower the claw to capture the ball
+sub capture(){
+  Acquire(ballMutex);
+  PosRegSetAngle(OUT_A, 0);
+  Release(ballMutex);
+}
+
+// Let go task - this task should raise the claw to let the ball go
+sub let_go(){
+  Acquire(ballMutex);
+  PosRegSetAngle(OUT_A, -30);
+  Release(ballMutex);
+}
 
 // Set heading task - this function spins the robot in place to face a certain heading
 sub set_heading(int des_heading){
@@ -70,7 +84,7 @@ sub acquire(int des_heading, int est_dist){
   maintain = true;
   maintain_heading(des_heading);
   while(odo_dist < est_dist && 1 < color < 10);
-  capture;
+  capture();
   maintain = false;
   Release(moveMutex);
 }
@@ -100,73 +114,57 @@ sub sort_ball(){
     maintain = true;
     maintain_heading(home);
     while(light > DARK);
-    maintain  false;
+    maintain = false;
   }
 
   Release(moveMutex);
 }
 
-// Capture task - this task should lower the claw to capture the ball
-sub capture(){
-  Acquire(ballMutex);
-  PosRegSetAngle(OUT_A, 360);
-  PosRegAddAngle(OUT_A, 360);
-  Release(ballMutex);
-}
+// Check sensors task - this task is responsible for calibrating the robot headings
+// and check the sensors along the way
+task check_sensors(){
+  // Calibrate home and destination headings by taking a measurement facing each direction
+  ClearScreen();
+  TextOut(1,LCD_LINE1,"Not Calibrated");
+  while(!ButtonState(BTN));
+  Wait(300);
 
-// Let go task - this task should raise the claw to let the ball go
-sub let_go(){
-  Acquire(ballMutex);
-  PosRegSetAngle(OUT_A, 360);
-  PosRegAddAngle(OUT_A, 360);
-  Release(ballMutex);
-}
+  home = SensorHTCompass(COMPASSPORT);
+  TextOut(1,LCD_LINE2,"Home Set...");
+  while(!ButtonState(BTN));
+  Wait(300);
 
+  destination = SensorHTCompass(COMPASSPORT);
+  TextOut(1,LCD_LINE3,"Destination Set.");
+  while(!ButtonState(BTN));
+  Wait(300);
 
-// Check color sensor task - this task should monitor the color sensor to see if there is a ball to
-// capture. If so, activate capture task
-task check_color(){
+  ClearScreen();
+  TextOut(1,LCD_LINE1,"Ready to begin...");
+  while(!ButtonState(BTN));
+  calibrated = true;
+  ClearScreen();
+
   while(1){
+    heading = SensorHTCompass(COMPASSPORT);
+    ldist = SensorUS(LPORT);
+    rdist = SensorUS(RPORT);
     color = SensorHTColorNum(COLORPORT);
   }
 }
 
-
-// Check compass task - this task is responsible for updating the heading of the robot
-task check_compass(){
-  // Calibrate home and destination headings by taking a measurement facing each direction
-  while(178 > abs(home-destination) > 182){
-    ClearScreen();
-    TextOut(1,LCD_LINE2,"Not Calibrated");
-    while(!ButtonState(BTN));
-
-    home = SensorHTCompass(COMPASSPORT);
-    TextOut(1,LCD_LINE2,"Home Set...");
-    while(!ButtonState(BTN));
-
-    destination = SensorHTCompass(COMPASSPORT);
-    TextOut(1,LCD_LINE3,"Destination Set.");
-    while(!ButtonState(BTN));
-  }
-
-ClearScreen();
-TextOut(1,LCD_LINE1,"Ready to begin...")
-calibrated = true;
-while(!ButtonState(BTN));
-ClearScreen();
-
-while(1){
-  heading = SensorHTCompass(COMPASSPORT);
-}
-
-}
-
-
-// Check ultrasonic sensor task - this task is responsible for update the sonar values
-task check_ultrasonic(){
+task ball_finder(){
+  while(!calibrated);
+  let_go();
   while(1){
-    ldist = SensorUS(LPORT);
-    rdist = SensorUS(RPORT);
+    ClearLine(LCD_LINE1);
+    NumOut(1,LCD_LINE1,color);
+    if(color > 1 && color < 10){
+      capture();
+      Wait(2000);
+      let_go();
+      Wait(2000);
+    }
   }
 }
 
@@ -177,9 +175,8 @@ task main(){
   SetSensorLowspeed(RPORT);
   SetSensorLowspeed(COLORPORT);
   SetSensorLowspeed(COMPASSPORT);
-  SetSensorSound(SOUNDPORT);
-  PosRegEnable(OUT_A);
+  PosRegEnable(OUT_A,54,36,24);
   
   // Start all tasks
-  Precedes(check_compass, check_color);
+  Precedes(check_sensors, ball_finder);
 }

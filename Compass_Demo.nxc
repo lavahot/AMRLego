@@ -1,8 +1,8 @@
 task main(){
   int x;
-  SetSensorLowspeed(IN_2);
+  SetSensorLowspeed(IN_3);
   while(true){
-    x = SensorHTCompass(S2);
+    x = SensorHTCompass(S3);
     ResetScreen();
     NumOut(1,LCD_LINE6,x);
   }
