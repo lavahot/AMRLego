@@ -2,7 +2,7 @@
 #define RPORT IN_1
 #define MUXPORT IN_3
 #define COMPASSPORT msensor_S3_1
-#define LIGHTSENSOR msensor_S3_2
+#define LIGHTPORT msensor_S3_2
 #define COLORPORT IN_2
 #define BTN BTN4
 
@@ -14,7 +14,7 @@
 
 #define DARK 40
 
-#include "../HTSMUX/HTSMUX-driver.h"
+#include "HTSMUX-driver.h"
 
 mutex moveMutex;
 mutex ballMutex;
@@ -36,9 +36,9 @@ sub capture(){
 }
 
 // Let go task - this task should raise the claw to let the ball go
-sub let_go(){
+sub let_go(int angle){
   Acquire(ballMutex);
-  PosRegSetAngle(OUT_A, -30);
+  PosRegSetAngle(OUT_A, -angle);
   Release(ballMutex);
 }
 
@@ -50,6 +50,7 @@ sub set_heading(int des_heading){
   while(abs(error) > 2){
     OnFwd(LEFT, 5*error);
     OnRev(RIGHT, 5*error);
+    error = des_heading - heading;
   }
   Off(BOTH);
   Release(moveMutex);
@@ -87,7 +88,6 @@ sub acquire(int des_heading, int est_dist){
   maintain_heading(des_heading);
   while(odo_dist < est_dist && color < 10 && color > 1);
   capture();
-  maintain = false;
   Release(moveMutex);
 }
 
@@ -96,15 +96,16 @@ sub acquire(int des_heading, int est_dist){
 // and continue forward for another 500 ms
 sub sort_ball(){
   int color;
-  color = SensorHTColorNum(COLORPORT);
   int desHead=0;
 
+  //color = SensorHTColorNum(COLORPORT);
+  
   // If color is blue, set heading to destination and travel there
   if(color = 2){
-    desHead=destination;
+    desHead = destination;
   }
   else if(color < 10 && color > 7){
-    desHead=home;
+    desHead = home;
   }
   set_heading(desHead);
   while(light > DARK){
@@ -156,6 +157,18 @@ task check_sensors(){
     ldist = SensorUS(LPORT);
     rdist = SensorUS(RPORT);
     color = SensorHTColorNum(COLORPORT);
+    light = smuxSensorLegoLightNorm(LIGHTPORT);
+    
+    ClearLine(LCD_LINE1);
+    NumOut(1,LCD_LINE1,heading);
+    ClearLine(LCD_LINE2);
+    NumOut(1,LCD_LINE2,ldist);
+    ClearLine(LCD_LINE3);
+    NumOut(1,LCD_LINE3,rdist);
+    ClearLine(LCD_LINE4);
+    NumOut(1,LCD_LINE4,color);
+    ClearLine(LCD_LINE5);
+    NumOut(1,LCD_LINE5,light);
   }
 }
 
@@ -167,9 +180,7 @@ task ball_finder(){
     NumOut(1,LCD_LINE1,color);
     if(color > 1 && color < 10){
       capture();
-      Wait(2000);
-      let_go();
-      Wait(2000);
+      sort_ball();
     }
   }
 }
@@ -181,13 +192,12 @@ task main(){
   SetSensorLowspeed(RPORT);
   SetSensorLowspeed(COLORPORT);
   SetSensorLowspeed(MUXPORT);
-  //SetSensorSound(SOUNDPORT);
+  smuxSetSensorLegoLight(LIGHTPORT,1);
   if (!HTSMUXscanPorts(MUXPORT)) {
     // Scan failed, handle the error
     TextOut(0, LCD_LINE1, "Scan failed!");
     Wait(1000);
   }
-  SetSensorLowspeed(COMPASSPORT);
   PosRegEnable(OUT_A,54,36,24);
   
   // Start all tasks

@@ -1,0 +1,239 @@
+#define LPORT IN_4
+#define COMPASSPORT IN_1
+#define LIGHTPORT IN_3
+#define COLORPORT IN_2
+#define BTN BTN4
+
+#define LEFT OUT_C
+#define RIGHT OUT_B
+#define BOTH OUT_BC
+
+#define NEAR 10
+#define CLOSE 15
+
+#define DARK 40
+
+mutex moveMutex;
+
+bool calibrated = false;
+bool sorting = false;
+bool inDark = false;
+
+int actual_heading, desired_heading, home, destination, east_wall;
+int error;
+int light;
+int color;
+int ldist;
+
+int POWER = 80;
+
+// Capture task - this task should lower the claw to capture the ball
+sub capture(){
+  Acquire(moveMutex);
+  OnFwdReg(BOTH,50,OUT_REGMODE_SYNC);
+  PosRegSetAngle(OUT_A,0);
+  Wait(200);
+  Off(BOTH);
+  Release(moveMutex);
+}
+
+sub let_go(int angle){
+  PosRegSetAngle(OUT_A,-angle);
+}
+
+sub set_heading(){
+  int dir;
+  Wait(25);
+  error = desired_heading-actual_heading;
+  if(error>0) dir = 1;
+  else dir = -1;
+  Acquire(moveMutex);
+  OnFwd(LEFT,dir*30);
+  OnRev(RIGHT,dir*30);
+  while(error > 4 || error < -4) error = desired_heading-actual_heading;;
+  Off(BOTH);
+  Release(moveMutex);
+}
+
+sub maintain_heading(){
+  int control;
+  Acquire(moveMutex);
+  Wait(25);
+  error = desired_heading-actual_heading;
+  control = 0.5*error;
+  OnFwd(LEFT,POWER+control);
+  OnFwd(RIGHT,POWER-control);
+  Release(moveMutex);
+}
+
+sub sort_ball(){
+  sorting = true;
+   // If color is blue, set heading to destination and travel there
+  if(color == 2){
+    desired_heading = destination;
+    set_heading();
+    Acquire(moveMutex);
+    OnFwdReg(BOTH,90,OUT_REGMODE_SYNC);
+    Wait(1000);
+    while(light > DARK);
+    let_go(80);
+    OnFwdSync(BOTH,100,OUT_REGMODE_SYNC);
+    Wait(1500);
+    OnRevSync(BOTH,75,OUT_REGMODE_SYNC);
+    Wait(2000);
+    Off(BOTH);
+    let_go(40);
+    Wait(500);
+    Release(moveMutex);
+  }
+  else if(color <= 10 && color >= 7){
+    desired_heading = home;
+    set_heading();
+    Acquire(moveMutex);
+    OnRevReg(BOTH,75,OUT_REGMODE_SYNC);
+    Wait(500);
+    OnFwdReg(BOTH,90,OUT_REGMODE_SYNC);
+    while(light > DARK);
+    let_go(80);
+    OnFwdSync(BOTH,100,OUT_REGMODE_SYNC);
+    Wait(1500);
+    OnRevSync(BOTH,75,OUT_REGMODE_SYNC);
+    Wait(2000);
+    Off(BOTH);
+    let_go(40);
+    Wait(500);
+    Release(moveMutex);
+  }
+  let_go(40);
+  sorting = false;
+}
+
+task ball_check(){
+  while(!calibrated);
+  
+  while(true){
+    if(color > 1 && color < 10){
+      capture();
+      sort_ball();
+      desired_heading = east_wall;
+    }
+  }
+}
+
+// Check sensors task - this task is responsible for calibrating the robot headings
+// and check the sensors along the way
+task check_sensors(){
+  // Calibrate home and destination headings by taking a measurement facing each direction
+  ClearScreen();
+  TextOut(1,LCD_LINE1,"Not Calibrated");
+  while(!ButtonState(BTN));
+  Wait(300);
+
+  home = SensorHTCompass(COMPASSPORT);
+  TextOut(1,LCD_LINE2,"Home Set...");
+  NumOut(1,LCD_LINE3,home);
+  destination = home-180;
+  east_wall = home-90;
+  if(destination < 0){
+    destination +=360;
+  }
+  TextOut(1,LCD_LINE4,"Destination Set.");
+  NumOut(1,LCD_LINE5,destination);
+  TextOut(1,LCD_LINE6,"Ready to begin...");
+  
+  while(!ButtonState(BTN));
+
+  let_go(40);
+  Wait(1000);
+
+  calibrated = true;
+  ClearScreen();
+
+  while(true){
+    actual_heading = SensorHTCompass(COMPASSPORT);
+    ldist = SensorUS(LPORT);
+    color = SensorHTColorNum(COLORPORT);
+    light = Sensor(LIGHTPORT);
+    
+    ClearLine(LCD_LINE1);
+    NumOut(1,LCD_LINE1,light);
+    ClearLine(LCD_LINE2);
+    NumOut(1,LCD_LINE2,ldist);
+    ClearLine(LCD_LINE4);
+    NumOut(1,LCD_LINE4,color);
+    ClearLine(LCD_LINE5);
+    NumOut(1,LCD_LINE5,desired_heading);
+    ClearLine(LCD_LINE6);
+    NumOut(1,LCD_LINE6,actual_heading);
+    ClearLine(LCD_LINE7);
+    NumOut(1,LCD_LINE7,error);
+  }
+
+}
+
+task bumper(){
+  while(!calibrated);
+  Wait(100);
+  while(true){
+    if(!inDark){
+      POWER = 80;
+      if(ldist < 12){
+        Acquire(moveMutex);
+        OnRev(BOTH, 50);
+        Wait(100);
+        desired_heading = actual_heading + 90;
+        if(desired_heading > 360) desired_heading -= 360;
+        Release(moveMutex);
+        error = desired_heading-actual_heading;
+        set_heading();
+      }
+    }
+    else if(inDark){
+      POWER = 40;
+      if(ldist < 10 || light > DARK){
+        Acquire(moveMutex);
+        OnRev(BOTH, 40);
+        Wait(200);
+        desired_heading = actual_heading+90;
+        if(desired_heading > 360) desired_heading -= 360;
+        Release(moveMutex);
+        error = desired_heading-actual_heading;
+        set_heading();
+      }
+    }
+  }
+}
+
+task dark_check(){
+  while(true){
+    if(light > DARK) inDark = false;
+    if(light < DARK) inDark = true;
+  }
+}
+    
+
+task search(){
+  while(!calibrated);
+
+  desired_heading = east_wall;
+  set_heading();
+
+  while(1){
+    //maintain_heading(new_heading);
+    Acquire(moveMutex);
+    OnFwdReg(BOTH,POWER,OUT_REGMODE_SYNC);
+    Release(moveMutex);
+  }
+}
+
+task main(){
+  // Configure sensor ports
+  SetSensorLowspeed(LPORT);
+  SetSensorLight(LIGHTPORT);
+  SetSensorLowspeed(COLORPORT);
+  SetSensorLowspeed(COMPASSPORT);
+  PosRegEnable(OUT_A,54,36,24);
+  
+  // Start all tasks
+  Precedes(check_sensors, bumper, dark_check, ball_check, search);
+}
