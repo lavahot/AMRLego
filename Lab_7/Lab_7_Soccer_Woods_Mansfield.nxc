@@ -1,0 +1,76 @@
+#define IRPORT IN_1
+#define COMPASSPORT IN_2
+#define BTN BTN4
+
+#define LEFT OUT_B
+#define RIGHT OUT_C
+#define BOTH OUT_BC
+
+mutex moveMutex;
+
+int dir;
+int s1, s3, s5, s7, s9;
+
+int POWER = -80;
+
+// Check sensors task - this task is responsible for calibrating the robot headings
+// and check the sensors along the way
+task check_sensors(){
+  ClearScreen();
+
+  while(true){
+  ReadSensorHTIRSeeker2AC(IRPORT,dir,s1,s3,s5,s7,s9);
+
+  ClearLine(LCD_LINE1);
+  ClearLine(LCD_LINE2);
+  ClearLine(LCD_LINE3);
+  ClearLine(LCD_LINE4);
+  ClearLine(LCD_LINE5);
+  ClearLine(LCD_LINE6);
+  NumOut(60,LCD_LINE1,dir);
+  NumOut(60,LCD_LINE2,s1);
+  NumOut(60,LCD_LINE3,s3);
+  NumOut(60,LCD_LINE4,s5);
+  NumOut(60,LCD_LINE5,s7);
+  NumOut(60,LCD_LINE6,s9);
+
+  }
+}
+
+task go_forward(){
+  Acquire(moveMutex);
+  OnFwdReg(BOTH,-90,OUT_REGMODE_SYNC);
+  Wait(3000);
+  Off(BOTH);
+  Release(moveMutex);
+}
+
+task seek_ball(){
+  while(true){
+    while(dir > 5){
+      Acquire(moveMutex);
+      OnFwd(LEFT,-50);
+      OnRev(RIGHT,-50);
+      Release(moveMutex);
+    }
+    while(dir < 5){
+      Acquire(moveMutex);
+      OnFwd(RIGHT,-50);
+      OnRev(LEFT,-50);
+      Release(moveMutex);
+    }
+    while(dir == 5){
+      Acquire(moveMutex);
+      OnFwd(BOTH, -70);
+      Release(moveMutex);
+    }
+  }
+}
+
+task main(){
+  // Configure sensor ports
+  SetSensorLowspeed(IRPORT);
+  
+  // Start all tasks
+  Precedes(check_sensors, seek_ball);
+}
