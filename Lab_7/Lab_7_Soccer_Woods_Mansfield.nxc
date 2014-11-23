@@ -8,11 +8,8 @@
 
 mutex moveMutex;
 
-bool calibrated = false;
-bool sorting = false;
-bool inDark = false;
-
-int IR_zone;
+int dir;
+int s1, s3, s5, s7, s9;
 
 int POWER = -80;
 
@@ -22,10 +19,21 @@ task check_sensors(){
   ClearScreen();
 
   while(true){
-    IR_zone = SensorHTIRSeekerDir(IRPORT);
-    
-    ClearLine(LCD_LINE7);
-    NumOut(1,LCD_LINE7,IR_zone);
+  ReadSensorHTIRSeeker2AC(IRPORT,dir,s1,s3,s5,s7,s9);
+
+  ClearLine(LCD_LINE1);
+  ClearLine(LCD_LINE2);
+  ClearLine(LCD_LINE3);
+  ClearLine(LCD_LINE4);
+  ClearLine(LCD_LINE5);
+  ClearLine(LCD_LINE6);
+  NumOut(60,LCD_LINE1,dir);
+  NumOut(60,LCD_LINE2,s1);
+  NumOut(60,LCD_LINE3,s3);
+  NumOut(60,LCD_LINE4,s5);
+  NumOut(60,LCD_LINE5,s7);
+  NumOut(60,LCD_LINE6,s9);
+
   }
 }
 
@@ -38,13 +46,31 @@ task go_forward(){
 }
 
 task seek_ball(){
-  Acquire(moveMutex);
-  
+  while(true){
+    while(dir > 5){
+      Acquire(moveMutex);
+      OnFwd(LEFT,-50);
+      OnRev(RIGHT,-50);
+      Release(moveMutex);
+    }
+    while(dir < 5){
+      Acquire(moveMutex);
+      OnFwd(RIGHT,-50);
+      OnRev(LEFT,-50);
+      Release(moveMutex);
+    }
+    while(dir == 5){
+      Acquire(moveMutex);
+      OnFwd(BOTH, -70);
+      Release(moveMutex);
+    }
+  }
 }
 
 task main(){
   // Configure sensor ports
+  SetSensorLowspeed(IRPORT);
   
   // Start all tasks
-  Precedes(check_sensors);
+  Precedes(check_sensors, seek_ball);
 }
