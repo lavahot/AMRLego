@@ -1,0 +1,50 @@
+#define IRPORT IN_1
+#define COMPASSPORT IN_2
+#define BTN BTN4
+
+#define LEFT OUT_B
+#define RIGHT OUT_C
+#define BOTH OUT_BC
+
+mutex moveMutex;
+
+bool calibrated = false;
+bool sorting = false;
+bool inDark = false;
+
+int IR_zone;
+
+int POWER = -80;
+
+// Check sensors task - this task is responsible for calibrating the robot headings
+// and check the sensors along the way
+task check_sensors(){
+  ClearScreen();
+
+  while(true){
+    IR_zone = SensorHTIRSeekerDir(IRPORT);
+    
+    ClearLine(LCD_LINE7);
+    NumOut(1,LCD_LINE7,IR_zone);
+  }
+}
+
+task go_forward(){
+  Acquire(moveMutex);
+  OnFwdReg(BOTH,-90,OUT_REGMODE_SYNC);
+  Wait(3000);
+  Off(BOTH);
+  Release(moveMutex);
+}
+
+task seek_ball(){
+  Acquire(moveMutex);
+  
+}
+
+task main(){
+  // Configure sensor ports
+  
+  // Start all tasks
+  Precedes(check_sensors);
+}
