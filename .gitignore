@@ -6,3 +6,5 @@ _site/
 *.synctex.gz
 *.aux
 *latexmk
+*.pdf
+*.synctex.gz
