@@ -11,7 +11,7 @@
 mutex moveMutex;
 
 int dir;
-int s[10]; //s1, s3, s5, s7, s9;
+int s[9]; //s1, s3, s5, s7, s9;
 int proximity;
 
 int POWER = -80;
@@ -36,12 +36,10 @@ task check_sensors(){
   ClearScreen();
 
   while(true){
-  //ReadSensorHTIRSeeker2AC(IRPORT,dir,s1,s3,s5,s7,s9);
-  //ReadSensorHTIRSeeker2AC(IRPORT,dir,s[0],s[1],s[2],s[3],s[4]);
   readSeekerArray(dir, s);
 
   proximity=ArrayMax(s,NA,NA);
-  if (proximity ==0)
+  if (proximity <100)
      proximity = 100;
   /*
   ClearLine(LCD_LINE1);
