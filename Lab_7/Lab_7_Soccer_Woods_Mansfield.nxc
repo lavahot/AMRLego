@@ -6,12 +6,29 @@
 #define RIGHT OUT_C
 #define BOTH OUT_BC
 
+#define TURNPWR 30
+
 mutex moveMutex;
 
 int dir;
-int s1, s3, s5, s7, s9;
+int s[10]; //s1, s3, s5, s7, s9;
+int proximity;
 
 int POWER = -80;
+
+inline void readSeekerArray(byte& dir, byte& s[]) {
+  byte s1,s2,s3,s4,s5;
+  ReadSensorHTIRSeeker2AC(IRPORT, dir, s1,s2,s3,s4,s5);
+  s[0]=s1;
+  s[1]=(s1+s2);
+  s[2]=s2;
+  s[3]=(s2+s3);
+  s[4]=s3;
+  s[5]=(s3+s4);
+  s[6]=s4;
+  s[7]=(s4+s5);
+  s[8]=s5;
+}
 
 // Check sensors task - this task is responsible for calibrating the robot headings
 // and check the sensors along the way
@@ -19,8 +36,14 @@ task check_sensors(){
   ClearScreen();
 
   while(true){
-  ReadSensorHTIRSeeker2AC(IRPORT,dir,s1,s3,s5,s7,s9);
+  //ReadSensorHTIRSeeker2AC(IRPORT,dir,s1,s3,s5,s7,s9);
+  //ReadSensorHTIRSeeker2AC(IRPORT,dir,s[0],s[1],s[2],s[3],s[4]);
+  readSeekerArray(dir, s);
 
+  proximity=ArrayMax(s,NA,NA);
+  if (proximity ==0)
+     proximity = 100;
+  /*
   ClearLine(LCD_LINE1);
   ClearLine(LCD_LINE2);
   ClearLine(LCD_LINE3);
@@ -28,12 +51,12 @@ task check_sensors(){
   ClearLine(LCD_LINE5);
   ClearLine(LCD_LINE6);
   NumOut(60,LCD_LINE1,dir);
-  NumOut(60,LCD_LINE2,s1);
-  NumOut(60,LCD_LINE3,s3);
-  NumOut(60,LCD_LINE4,s5);
-  NumOut(60,LCD_LINE5,s7);
-  NumOut(60,LCD_LINE6,s9);
-
+  NumOut(60,LCD_LINE2,s[1]);
+  NumOut(60,LCD_LINE3,s[2]);
+  NumOut(60,LCD_LINE4,s[3]);
+  NumOut(60,LCD_LINE5,s[4]);
+  NumOut(60,LCD_LINE6,s[5]);
+    */
   }
 }
 
@@ -49,19 +72,23 @@ task seek_ball(){
   while(true){
     while(dir > 5){
       Acquire(moveMutex);
-      OnFwd(LEFT,-50);
-      OnRev(RIGHT,-50);
+      //OnFwd(LEFT,-(20+TURNPWR*255/proximity));
+      //OnRev(RIGHT,-(20+TURNPWR*255/proximity));
+      OnFwd(LEFT,-40);
+      OnRev(RIGHT,-40);
       Release(moveMutex);
     }
     while(dir < 5){
       Acquire(moveMutex);
-      OnFwd(RIGHT,-50);
-      OnRev(LEFT,-50);
+      //OnFwd(RIGHT,-(20+TURNPWR*255/proximity));
+      //OnRev(LEFT,-(20+TURNPWR*255/proximity));
+      OnFwd(RIGHT,-40);
+      OnRev(LEFT,-40);
       Release(moveMutex);
     }
     while(dir == 5){
       Acquire(moveMutex);
-      OnFwd(BOTH, -70);
+      OnFwdReg(BOTH,-80,OUT_REGMODE_SYNC);
       Release(moveMutex);
     }
   }
