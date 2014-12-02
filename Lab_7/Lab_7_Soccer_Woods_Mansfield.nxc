@@ -6,7 +6,7 @@
 #define RIGHT OUT_C
 #define BOTH OUT_BC
 
-#define TURNPWR 5
+#define TURNPWR 6
 
 #define MAX 80
 #define MIN (-40)
@@ -17,11 +17,15 @@ float m = (MAX-MIN)/2;
 int bleft = -(MAX-MIN)/2 * 4;
 int bright = (MAX-MIN)/2 * 6;
 
+int powerMin = 7;
+
 int dir;
 int s[9]; //s1, s3, s5, s7, s9;
 int proximity;
 
 int POWER = -80;
+
+bool calibrated = false;
 
 inline void readSeekerArray(byte& dir, byte& s[]) {
   byte s1,s2,s3,s4,s5;
@@ -41,15 +45,34 @@ inline void readSeekerArray(byte& dir, byte& s[]) {
 // and check the sensors along the way
 task check_sensors(){
   ClearScreen();
+  TextOut(1,LCD_LINE1,"Not Calibrated");
+  while(!ButtonState(BTN));
+  Wait(300);
+
+  home = SensorHTCompass(COMPASSPORT);
+  TextOut(1,LCD_LINE2,"Home Set...");
+  NumOut(1,LCD_LINE3,home);
+  destination = home-180;
+  east_wall = home-90;
+  if(destination < 0){
+    destination +=360;
+  }
+  TextOut(1,LCD_LINE4,"Destination Set.");
+  NumOut(1,LCD_LINE5,destination);
+  TextOut(1,LCD_LINE6,"Ready to begin...");
+  
+  while(!ButtonState(BTN));
 
   while(true){
     readSeekerArray(dir, s);
 
     proximity=ArrayMax(s,NA,NA);
-    if (proximity <100)
-      proximity = 100;
+    if (proximity <50)
+      proximity = 500;
     if (proximity > 170)
       proximity = 170;
+
+    actual_heading = SensorHTCompass(COMPASSPORT);
 
     ClearLine(LCD_LINE1);
     ClearLine(LCD_LINE2);
@@ -69,6 +92,7 @@ task check_sensors(){
 }
 
 task go_forward(){
+  while(!calibrated);
   Acquire(moveMutex);
   OnFwdReg(BOTH,-90,OUT_REGMODE_SYNC);
   Wait(3000);
@@ -102,26 +126,29 @@ task go_forward(){
 //     Release(moveMutex);
 //   }
 // }
+
 task seek_ball(){
+  while(!calibrated);
   while(true){
     while(dir > 5){
       Acquire(moveMutex);
-      OnFwd(LEFT,-(40 + TURNPWR * proximity / 255));
-      OnRev(RIGHT,-(40 + TURNPWR * proximity / 255));
-      // OnFwd(LEFT,-40);
-      // OnRev(RIGHT,-40);
+      OnFwdReg(LEFT,-(powerMin + TURNPWR * proximity / 255),OUT_REGMODE_SPEED);
+      OnRevReg(RIGHT,-(powerMin + TURNPWR * proximity / 255),OUT_REGMODE_SPEED);
+      // OnFwdReg(LEFT,-powerMin,OUT_REGMODE_SPEED);
+      // OnRevReg(RIGHT,-powerMin,OUT_REGMODE_SPEED);
       Release(moveMutex);
     }
     while(dir < 5){
       Acquire(moveMutex);
-      OnFwd(RIGHT,-(40 + TURNPWR * proximity / 255));
-      OnRev(LEFT,-(40 + TURNPWR * proximity / 255));
-      // OnFwd(RIGHT,-40);
-      // OnRev(LEFT,-40);
+      OnFwdReg(RIGHT,-(powerMin + TURNPWR * proximity / 255),OUT_REGMODE_SPEED);
+      OnRevReg(LEFT,-(powerMin + TURNPWR * proximity / 255),OUT_REGMODE_SPEED);
+      // OnFwdReg(RIGHT,-powerMin, OUT_REGMODE_SPEED);
+      // OnRevReg(LEFT,-powerMin, OUT_REGMODE_SPEED);
       Release(moveMutex);
     }
     while(dir == 5){
       Acquire(moveMutex);
+      // Off(BOTH);
       OnFwdReg(BOTH,-80,OUT_REGMODE_SYNC);
       Release(moveMutex);
     }
@@ -131,6 +158,7 @@ task seek_ball(){
 task main(){
   // Configure sensor ports
   SetSensorLowspeed(IRPORT);
+  SetSensorLowspeed(COMPASSPORT);
   
   // Start all tasks
   Precedes(check_sensors, seek_ball);
