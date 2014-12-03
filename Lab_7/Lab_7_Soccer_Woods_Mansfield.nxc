@@ -6,65 +6,145 @@
 #define RIGHT OUT_C
 #define BOTH OUT_BC
 
-#define TURNPWR 6
-
-#define MAX 80
-#define MIN (-40)
+#define TURNPWR -5
+#define POWER -60
 
 mutex moveMutex;
+int turn_power;
 
-float m = (MAX-MIN)/2;
-int bleft = -(MAX-MIN)/2 * 4;
-int bright = (MAX-MIN)/2 * 6;
+int home, goal, left_wall, right_wall, heading;
+int ball_angle, angle_sum, angle_error;
 
-int powerMin = 7;
-
-int dir;
-int s[9]; //s1, s3, s5, s7, s9;
+int dir = 0;
+int s[9];
 int proximity;
 
-int POWER = -80;
-
 bool calibrated = false;
+bool attacking = false;
 
 inline void readSeekerArray(byte& dir, byte& s[]) {
   byte s1,s2,s3,s4,s5;
   ReadSensorHTIRSeeker2AC(IRPORT, dir, s1,s2,s3,s4,s5);
   s[0]=s1;
-  s[1]=0; //(s1+s2);
+  s[1]=0;
   s[2]=s2;
-  s[3]=0; //(s2+s3);
+  s[3]=0;
   s[4]=s3;
-  s[5]=0; //(s3+s4);
+  s[5]=0;
   s[6]=s4;
-  s[7]=0; //(s4+s5);
+  s[7]=0;
   s[8]=s5;
+}
+
+sub go_forward(){
+  Acquire(moveMutex);
+  OnFwdReg(BOTH,POWER,OUT_REGMODE_SYNC);
+  Release(moveMutex);
+}
+
+sub turn_left(){
+  Acquire(moveMutex);
+  OnFwdReg(RIGHT,turn_power,OUT_REGMODE_SPEED);
+  OnRevReg(LEFT,turn_power,OUT_REGMODE_SPEED);
+  Release(moveMutex);
+}
+
+sub turn_right(){
+  Acquire(moveMutex);
+  OnFwdReg(LEFT,turn_power,OUT_REGMODE_SPEED);
+  OnRevReg(RIGHT,turn_power,OUT_REGMODE_SPEED);
+  Release(moveMutex);
+}
+
+task set_mode(){
+  while(!calibrated);
+  while(true){
+    ClearLine(LCD_LINE1);
+    ClearLine(LCD_LINE2);
+    ClearLine(LCD_LINE3);
+    ClearLine(LCD_LINE4);
+    ClearLine(LCD_LINE5);
+    if( (angle_sum < right_wall) && (angle_sum > left_wall) ){
+      // Attack
+      attacking = true;
+      TextOut(1,LCD_LINE1,"Attacking");
+    }
+    
+    else{
+      // Defend
+      attacking = false;
+      TextOut(1,LCD_LINE1,"Defending");
+    }
+    NumOut(60,LCD_LINE2,heading);
+    NumOut(60,LCD_LINE3,ball_angle);
+    NumOut(60,LCD_LINE4,angle_sum);
+    NumOut(60,LCD_LINE5,dir);
+  }
+}
+
+task play(){
+  while(!calibrated); // do nothing
+  
+  while(true){
+  
+    turn_power = TURNPWR*abs(dir-5)*3/4;
+    
+    while(attacking){
+      if(dir > 5){
+        turn_right();
+      }
+      else if(dir < 5){
+        turn_left();
+      }
+      else if(dir == 5){
+        go_forward();
+      }
+    }
+  
+    while(!attacking){
+      if(heading < goal && angle_error > 5){
+        turn_left();
+      }
+      else if(heading > goal && angle_error > 5){
+        turn_right();
+      }
+      else if(angle_error < 5){
+        go_forward();
+      }
+    }
+  }
 }
 
 // Check sensors task - this task is responsible for calibrating the robot headings
 // and check the sensors along the way
 task check_sensors(){
+  int angles[10] = { 180, -120, -90, -60, -30, 0, 30, 60, 90, 120 };
   ClearScreen();
   TextOut(1,LCD_LINE1,"Not Calibrated");
   while(!ButtonState(BTN));
   Wait(300);
 
-  home = SensorHTCompass(COMPASSPORT);
-  TextOut(1,LCD_LINE2,"Home Set...");
-  NumOut(1,LCD_LINE3,home);
-  destination = home-180;
-  east_wall = home-90;
-  if(destination < 0){
-    destination +=360;
-  }
-  TextOut(1,LCD_LINE4,"Destination Set.");
-  NumOut(1,LCD_LINE5,destination);
-  TextOut(1,LCD_LINE6,"Ready to begin...");
+  goal = SensorHTCompass(COMPASSPORT);
+  TextOut(1,LCD_LINE2,"Goal Set...");
+  NumOut(1,LCD_LINE3,goal);
   
+  home = goal-180;
+  left_wall = goal-90;
+  right_wall = goal+90;
+  if(home < 0) home +=360;
+  if(left_wall < 0) left_wall += 360;
+  if(right_wall > 360) right_wall -= 360;
+  TextOut(1,LCD_LINE4,"Home Set.");
+  NumOut(1,LCD_LINE5,home);
+  TextOut(1,LCD_LINE6,"Ready to begin...");
+
   while(!ButtonState(BTN));
+  ClearScreen();
+  calibrated = true;
 
   while(true){
     readSeekerArray(dir, s);
+    ball_angle = angles[dir];
 
     proximity=ArrayMax(s,NA,NA);
     if (proximity <50)
@@ -72,8 +152,14 @@ task check_sensors(){
     if (proximity > 170)
       proximity = 170;
 
-    actual_heading = SensorHTCompass(COMPASSPORT);
-
+    heading = SensorHTCompass(COMPASSPORT);
+    angle_error = abs(home-heading);
+    angle_sum = heading + ball_angle;
+    
+    if(angle_sum < 360) angle_sum += 360;
+    if(angle_sum > 360) angle_sum -= 360;
+    
+    /*
     ClearLine(LCD_LINE1);
     ClearLine(LCD_LINE2);
     ClearLine(LCD_LINE3);
@@ -88,70 +174,7 @@ task check_sensors(){
     NumOut(60,LCD_LINE5,s[6]);
     NumOut(60,LCD_LINE6,s[8]);
     NumOut(60,LCD_LINE7,proximity);
-  }
-}
-
-task go_forward(){
-  while(!calibrated);
-  Acquire(moveMutex);
-  OnFwdReg(BOTH,-90,OUT_REGMODE_SYNC);
-  Wait(3000);
-  Off(BOTH);
-  Release(moveMutex);
-}
-
-// task seek_ball(){
-//   int lpower, rpower;
-
-//   while(true){
-//     lpower=(m*dir+bleft);
-//     rpower=(-m*dir+bright);
-//     if (lpower>MAX){
-//       lpower=MAX;
-//     }
-//     if (lpower<MIN){
-//       lpower=MIN;
-//     }
-//     if (rpower>MAX){
-//       rpower=MAX;
-//     }
-//     if (rpower<MIN){
-//       rpower=MIN;
-//     }
-//     Acquire(moveMutex);
-//     OnFwd(LEFT,-lpower*200/proximity);
-//     OnFwd(RIGHT,-rpower*200/proximity);
-//     // OnFwd(LEFT,-40);
-//     // OnRev(RIGHT,-40);
-//     Release(moveMutex);
-//   }
-// }
-
-task seek_ball(){
-  while(!calibrated);
-  while(true){
-    while(dir > 5){
-      Acquire(moveMutex);
-      OnFwdReg(LEFT,-(powerMin + TURNPWR * proximity / 255),OUT_REGMODE_SPEED);
-      OnRevReg(RIGHT,-(powerMin + TURNPWR * proximity / 255),OUT_REGMODE_SPEED);
-      // OnFwdReg(LEFT,-powerMin,OUT_REGMODE_SPEED);
-      // OnRevReg(RIGHT,-powerMin,OUT_REGMODE_SPEED);
-      Release(moveMutex);
-    }
-    while(dir < 5){
-      Acquire(moveMutex);
-      OnFwdReg(RIGHT,-(powerMin + TURNPWR * proximity / 255),OUT_REGMODE_SPEED);
-      OnRevReg(LEFT,-(powerMin + TURNPWR * proximity / 255),OUT_REGMODE_SPEED);
-      // OnFwdReg(RIGHT,-powerMin, OUT_REGMODE_SPEED);
-      // OnRevReg(LEFT,-powerMin, OUT_REGMODE_SPEED);
-      Release(moveMutex);
-    }
-    while(dir == 5){
-      Acquire(moveMutex);
-      // Off(BOTH);
-      OnFwdReg(BOTH,-80,OUT_REGMODE_SYNC);
-      Release(moveMutex);
-    }
+    */
   }
 }
 
@@ -161,5 +184,5 @@ task main(){
   SetSensorLowspeed(COMPASSPORT);
   
   // Start all tasks
-  Precedes(check_sensors, seek_ball);
+  Precedes(check_sensors,set_mode,play);
 }
