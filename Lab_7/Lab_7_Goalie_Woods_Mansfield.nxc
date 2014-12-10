@@ -1,0 +1,65 @@
+#define IRPORT IN_1
+#define COMPASSPORT IN_2
+#define BTN BTN4
+
+#define LEFT OUT_B
+#define RIGHT OUT_C
+#define BOTH OUT_BC
+
+#define POWER 70
+
+mutex moveMutex;
+
+int dir = 0;
+
+bool calibrated = false;
+
+sub go_forward(){
+  Acquire(moveMutex);
+  OnFwdReg(BOTH,-POWER,OUT_REGMODE_SYNC);
+  Release(moveMutex);
+}
+
+sub go_backward(){
+  Acquire(moveMutex);
+  OnFwdReg(BOTH,POWER,OUT_REGMODE_SYNC);
+  Release(moveMutex);
+}
+
+sub stop_moving(){
+  Acquire(moveMutex);
+  Off(BOTH);
+  Release(moveMutex);
+}
+
+
+task play(){
+  while(!calibrated); // do nothing
+  while(true){
+    if(dir > 2) go_forward();
+    else if(dir < 2) go_backward();
+    else stop_moving();
+  }
+}
+
+// Check sensors task - this task is responsible for calibrating the robot headings
+// and check the sensors along the way
+task check_sensors(){
+  byte s1,s3,s5,s7,s9;
+
+  while(!ButtonState(BTN));
+  calibrated = true;
+
+  while(true){
+    ReadSensorHTIRSeeker2AC(IRPORT, dir, s1,s3,s5,s7,s9);
+  }
+}
+
+task main(){
+  // Configure sensor ports
+  SetSensorLowspeed(IRPORT);
+  SetSensorLowspeed(COMPASSPORT);
+  
+  // Start all tasks
+  Precedes(check_sensors,play);
+}

@@ -1,0 +1,26 @@
+#define BTN BTN4
+
+#define LEFT OUT_B
+#define RIGHT OUT_C
+#define BOTH OUT_BC
+
+#define POWER 90
+
+mutex moveMutex;
+
+task play(){
+  ClearScreen();
+  TextOut(1,LCD_LINE1,"Press to Shoot!");
+  while(!ButtonState(BTN)); // do nothing
+  while(true){
+    Acquire(moveMutex);
+    OnFwdReg(BOTH,POWER,OUT_REGMODE_SYNC);
+    Release(moveMutex);
+  }
+}
+
+task main(){
+
+  // Start all tasks
+  Precedes(play);
+}
