@@ -1,13 +1,13 @@
 #define IRPORT IN_1
-#define COMPASSPORT IN_2
+#define COMPASSPORT IN_4
 #define BTN BTN4
 
 #define LEFT OUT_B
 #define RIGHT OUT_C
 #define BOTH OUT_BC
 
-#define TURNPWR -5
-#define POWER -60
+#define TURNPWR 50 
+#define POWER 50
 
 mutex moveMutex;
 int turn_power;
@@ -17,10 +17,33 @@ int ball_angle, angle_sum, angle_error;
 
 int dir = 0;
 int s[9];
-int proximity;
+int proximity =0;
+int angles[] = {180, -120, -90, -60, -30, 0, 30, 60, 90, 120};
 
 bool calibrated = false;
 bool attacking = false;
+
+int STALL_THRESHOLD = 1;
+
+bool is_stalled()
+{
+    for (int i = 0; i != 3; ++i)
+    {
+        ResetRotationCount(LEFT);
+        ResetRotationCount(RIGHT);
+        Wait(100);
+
+        const int countl = MotorRotationCount(LEFT);
+        const int countr = MotorRotationCount(RIGHT);
+        // NumOut(0, LCD_LINE1, countl, true);
+        
+        if (abs(countl) >= STALL_THRESHOLD && abs(countr) >= STALL_THRESHOLD)
+        {
+            return false;
+        }
+    }
+    return true;
+}
 
 inline void readSeekerArray(byte& dir, byte& s[]) {
   byte s1,s2,s3,s4,s5;
@@ -45,14 +68,25 @@ sub go_forward(){
 sub turn_left(){
   Acquire(moveMutex);
   OnFwdReg(RIGHT,turn_power,OUT_REGMODE_SPEED);
-  OnRevReg(LEFT,turn_power,OUT_REGMODE_SPEED);
+  OnFwdReg(LEFT,turn_power-abs(5-dir)*5,OUT_REGMODE_SPEED);
+  // OnFwd(RIGHT,turn_power);
+  // OnRev(LEFT,turn_power);
   Release(moveMutex);
 }
 
 sub turn_right(){
   Acquire(moveMutex);
   OnFwdReg(LEFT,turn_power,OUT_REGMODE_SPEED);
-  OnRevReg(RIGHT,turn_power,OUT_REGMODE_SPEED);
+  OnFwdReg(RIGHT,turn_power-abs(5-dir)*5,OUT_REGMODE_SPEED);
+  // OnFwd(LEFT,turn_power,OUT_REGMODE_SPEED);
+  // OnRev(RIGHT,turn_power,OUT_REGMODE_SPEED);
+  Release(moveMutex);
+}
+
+sub back_up(){
+  Acquire(moveMutex);
+  OnRevReg(BOTH, POWER, OUT_REGMODE_SPEED);
+  Wait(500);
   Release(moveMutex);
 }
 
@@ -72,7 +106,7 @@ task set_mode(){
     
     else{
       // Defend
-      attacking = false;
+      attacking = true;
       TextOut(1,LCD_LINE1,"Defending");
     }
     NumOut(60,LCD_LINE2,heading);
@@ -87,9 +121,12 @@ task play(){
   
   while(true){
   
-    turn_power = TURNPWR*abs(dir-5)*3/4;
+    //turn_power = TURNPWR*abs(dir-5)*3/4;
+
+    turn_power = TURNPWR;
+
     
-    while(attacking){
+    if(attacking){
       if(dir > 5){
         turn_right();
       }
@@ -101,7 +138,7 @@ task play(){
       }
     }
   
-    while(!attacking){
+    else{
       if(heading < goal && angle_error > 5){
         turn_left();
       }
@@ -112,13 +149,21 @@ task play(){
         go_forward();
       }
     }
+
+    if(is_stalled()){
+      back_up();
+    }
+
   }
 }
 
 // Check sensors task - this task is responsible for calibrating the robot headings
 // and check the sensors along the way
 task check_sensors(){
-  int angles[10] = { 180, -120, -90, -60, -30, 0, 30, 60, 90, 120 };
+  
+  int proxhigh = 180;
+  int proxlow = 50;
+
   ClearScreen();
   TextOut(1,LCD_LINE1,"Not Calibrated");
   while(!ButtonState(BTN));
@@ -131,9 +176,12 @@ task check_sensors(){
   home = goal-180;
   left_wall = goal-90;
   right_wall = goal+90;
-  if(home < 0) home +=360;
-  if(left_wall < 0) left_wall += 360;
-  if(right_wall > 360) right_wall -= 360;
+  if(home < 0)
+    home +=360;
+  if(left_wall < 0) 
+    left_wall += 360;
+  if(right_wall > 360) 
+    right_wall -= 360;
   TextOut(1,LCD_LINE4,"Home Set.");
   NumOut(1,LCD_LINE5,home);
   TextOut(1,LCD_LINE6,"Ready to begin...");
@@ -147,10 +195,10 @@ task check_sensors(){
     ball_angle = angles[dir];
 
     proximity=ArrayMax(s,NA,NA);
-    if (proximity <50)
-      proximity = 500;
-    if (proximity > 170)
-      proximity = 170;
+    if (proximity < proxlow)
+      proximity = proxlow;
+    if (proximity > proxhigh)
+      proximity = proxhigh;
 
     heading = SensorHTCompass(COMPASSPORT);
     angle_error = abs(home-heading);
@@ -159,22 +207,6 @@ task check_sensors(){
     if(angle_sum < 360) angle_sum += 360;
     if(angle_sum > 360) angle_sum -= 360;
     
-    /*
-    ClearLine(LCD_LINE1);
-    ClearLine(LCD_LINE2);
-    ClearLine(LCD_LINE3);
-    ClearLine(LCD_LINE4);
-    ClearLine(LCD_LINE5);
-    ClearLine(LCD_LINE6);
-    ClearLine(LCD_LINE7);
-    NumOut(60,LCD_LINE1,dir);
-    NumOut(60,LCD_LINE2,s[0]);
-    NumOut(60,LCD_LINE3,s[2]);
-    NumOut(60,LCD_LINE4,s[4]);
-    NumOut(60,LCD_LINE5,s[6]);
-    NumOut(60,LCD_LINE6,s[8]);
-    NumOut(60,LCD_LINE7,proximity);
-    */
   }
 }
 
