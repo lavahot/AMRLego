@@ -6,7 +6,7 @@
 #define RIGHT OUT_C
 #define BOTH OUT_BC
 
-#define POWER 70
+#define POWER 85
 
 mutex moveMutex;
 
@@ -16,19 +16,19 @@ bool calibrated = false;
 
 sub go_forward(){
   Acquire(moveMutex);
-  OnFwdReg(BOTH,-POWER,OUT_REGMODE_SYNC);
+  OnFwdReg(BOTH,POWER,OUT_REGMODE_SYNC);
   Release(moveMutex);
 }
 
 sub go_backward(){
   Acquire(moveMutex);
-  OnFwdReg(BOTH,POWER,OUT_REGMODE_SYNC);
+  OnRevReg(BOTH,POWER,OUT_REGMODE_SYNC);
   Release(moveMutex);
 }
 
 sub stop_moving(){
   Acquire(moveMutex);
-  Off(BOTH);
+  Coast(BOTH);
   Release(moveMutex);
 }
 
@@ -36,8 +36,8 @@ sub stop_moving(){
 task play(){
   while(!calibrated); // do nothing
   while(true){
-    if(dir > 2) go_forward();
-    else if(dir < 2) go_backward();
+    if(dir > 2 && dir <= 6) go_forward();
+    else if(dir < 2 || dir > 6) go_backward();
     else stop_moving();
   }
 }

@@ -1,0 +1,33 @@
+#define OUT_DRIVE       OUT_C
+#define STALL_THRESHOLD 6 // may depend on battery charge level?
+
+bool stalled = false;
+
+bool is_stalled()
+{
+    for (int i = 0; i != 3; ++i)
+    {
+        ResetRotationCount(OUT_DRIVE);
+        Wait(10);
+
+        const int count = MotorRotationCount(OUT_DRIVE);
+        NumOut(0, LCD_LINE1, count, true);
+
+        if (abs(count) >= STALL_THRESHOLD)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+task main(){
+  // Configure sensor ports
+  OnFwdReg(OUT_DRIVE, 100, OUT_REGMODE_SPEED);
+  
+  // Start all tasks
+  while(true){
+    stalled = is_stalled();
+  }
+  
+}
