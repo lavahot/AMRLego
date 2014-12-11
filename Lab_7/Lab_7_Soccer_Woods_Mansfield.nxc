@@ -124,35 +124,81 @@ task play(){
     //turn_power = TURNPWR*abs(dir-5)*3/4;
 
     turn_power = TURNPWR;
-
-    
-    if(attacking){
-      if(dir > 5){
-        turn_right();
-      }
-      else if(dir < 5){
-        turn_left();
-      }
-      else if(dir == 5){
-        go_forward();
-      }
+    // Acquire(moveMutex);
+    switch(dir){
+      case 0:
+        // OnFwd(RIGHT, 100);
+        // OnFwd(LEFT, 0);
+        // break;
+      case 1:
+        OnFwd(RIGHT, 100);
+        OnFwd(LEFT, 45);
+        break;
+      case 2:
+        OnFwd(RIGHT, 100);
+        OnFwd(LEFT, 60);
+        break;
+      case 3:
+        OnFwd(RIGHT, 100);
+        OnFwd(LEFT, 75);
+        break;
+      case 4:
+        OnFwd(RIGHT, 100);
+        OnFwd(LEFT, 90);
+        break;
+      case 5:
+        OnFwd(RIGHT, 100);
+        OnFwd(LEFT, 100);
+        break;
+      case 6:
+        OnFwd(RIGHT, 90);
+        OnFwd(LEFT, 100);
+        break;
+      case 7:
+        OnFwd(RIGHT, 75);
+        OnFwd(LEFT, 100);
+        break;
+      case 8:
+        OnFwd(RIGHT, 60);
+        OnFwd(LEFT, 100);
+        break;
+      case 9:
+        OnFwd(RIGHT, 45);
+        OnFwd(LEFT, 100);
+        break;
+      default:
+        Off(BOTH);
+        break;
     }
+    // Release(moveMutex);
+    // if(attacking){
+    //   switch
+    //   if(dir > 5){
+    //     turn_right();
+    //   }
+    //   else if(dir < 5){
+    //     turn_left();
+    //   }
+    //   else if(dir == 5){
+    //     go_forward();
+    //   }
+    // }
   
-    else{
-      if(heading < goal && angle_error > 5){
-        turn_left();
-      }
-      else if(heading > goal && angle_error > 5){
-        turn_right();
-      }
-      else if(angle_error < 5){
-        go_forward();
-      }
-    }
+    // else{
+    //   if(heading < goal && angle_error > 5){
+    //     turn_left();
+    //   }
+    //   else if(heading > goal && angle_error > 5){
+    //     turn_right();
+    //   }
+    //   else if(angle_error < 5){
+    //     go_forward();
+    //   }
+    // }
 
-    if(is_stalled()){
-      back_up();
-    }
+    // if(is_stalled()){
+    //   back_up();
+    // }
 
   }
 }
@@ -200,9 +246,9 @@ task check_sensors(){
     if (proximity > proxhigh)
       proximity = proxhigh;
 
-    heading = SensorHTCompass(COMPASSPORT);
-    angle_error = abs(home-heading);
-    angle_sum = heading + ball_angle;
+    // heading = SensorHTCompass(COMPASSPORT);
+    // angle_error = abs(home-heading);
+    // angle_sum = heading + ball_angle;
     
     if(angle_sum < 360) angle_sum += 360;
     if(angle_sum > 360) angle_sum -= 360;
