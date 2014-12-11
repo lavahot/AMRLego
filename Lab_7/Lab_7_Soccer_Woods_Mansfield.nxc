@@ -25,6 +25,8 @@ bool attacking = false;
 
 int STALL_THRESHOLD = 1;
 
+int dirt = 0;
+
 bool is_stalled()
 {
     for (int i = 0; i != 3; ++i)
@@ -86,7 +88,7 @@ sub turn_right(){
 sub back_up(){
   Acquire(moveMutex);
   OnRevReg(BOTH, POWER, OUT_REGMODE_SPEED);
-  Wait(500);
+  Wait(800);
   Release(moveMutex);
 }
 
@@ -98,6 +100,7 @@ task set_mode(){
     ClearLine(LCD_LINE3);
     ClearLine(LCD_LINE4);
     ClearLine(LCD_LINE5);
+    ClearLine(LCD_LINE6);
     if( (angle_sum < right_wall) && (angle_sum > left_wall) ){
       // Attack
       attacking = true;
@@ -106,17 +109,20 @@ task set_mode(){
     
     else{
       // Defend
-      attacking = true;
+      attacking = false;
       TextOut(1,LCD_LINE1,"Defending");
     }
     NumOut(60,LCD_LINE2,heading);
     NumOut(60,LCD_LINE3,ball_angle);
     NumOut(60,LCD_LINE4,angle_sum);
     NumOut(60,LCD_LINE5,dir);
+    NumOut(60,LCD_LINE6,dirt);
+  
   }
 }
 
 task play(){
+
   while(!calibrated); // do nothing
   
   while(true){
@@ -125,7 +131,18 @@ task play(){
 
     turn_power = TURNPWR;
     // Acquire(moveMutex);
-    switch(dir){
+    if(attacking){
+      dirt=dir;
+    }
+    else{
+      if (! ( angle_sum > right_wall && angle_sum < right_wall + 90) ){
+        dirt=dir-1;
+      }
+      else{
+        dirt=dir+1;
+      }
+    }
+    switch(dirt){
       case 0:
         // OnFwd(RIGHT, 100);
         // OnFwd(LEFT, 0);
@@ -136,38 +153,42 @@ task play(){
         break;
       case 2:
         OnFwd(RIGHT, 65);
-        OnFwd(LEFT, 40);
+        OnFwd(LEFT, 30);
         break;
       case 3:
         OnFwd(RIGHT, 75);
-        OnFwd(LEFT, 60);
+        OnFwd(LEFT, 45);
         break;
       case 4:
         OnFwd(RIGHT, 90);
-        OnFwd(LEFT, 80);
-        break;
+        OnFwd(LEFT, 72);
+        // if(! attacking && (angle_sum > right_wall && angle_sum < right_wall + 90 ))
+          break;
       case 5:
         OnFwd(RIGHT, 100);
         OnFwd(LEFT, 100);
-        break;
+        // if(attacking)
+          break;
       case 6:
-        OnFwd(RIGHT, 80);
+        OnFwd(RIGHT, 72);
         OnFwd(LEFT, 90);
-        break;
+        // if(! attacking && (angle_sum > right_wall && angle_sum < right_wall + 90 ))
+          break;
       case 7:
-        OnFwd(RIGHT, 60);
+        OnFwd(RIGHT, 45);
         OnFwd(LEFT, 75);
         break;
       case 8:
-        OnFwd(RIGHT, 40);
+        OnFwd(RIGHT, 30);
         OnFwd(LEFT, 65);
         break;
       case 9:
         OnFwd(RIGHT, 20);
         OnFwd(LEFT, 80);
         break;
-      default:
-        Off(BOTH);
+      default:        
+        OnFwd(RIGHT, 20);
+        OnFwd(LEFT, 80);
         break;
     }
     // Release(moveMutex);
@@ -246,9 +267,9 @@ task check_sensors(){
     if (proximity > proxhigh)
       proximity = proxhigh;
 
-    // heading = SensorHTCompass(COMPASSPORT);
-    // angle_error = abs(home-heading);
-    // angle_sum = heading + ball_angle;
+    heading = SensorHTCompass(COMPASSPORT);
+    angle_error = abs(home-heading);
+    angle_sum = heading + ball_angle;
     
     if(angle_sum < 360) angle_sum += 360;
     if(angle_sum > 360) angle_sum -= 360;
