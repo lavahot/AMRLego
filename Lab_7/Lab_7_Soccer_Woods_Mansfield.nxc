@@ -101,16 +101,31 @@ task set_mode(){
     ClearLine(LCD_LINE4);
     ClearLine(LCD_LINE5);
     ClearLine(LCD_LINE6);
-    if( (angle_sum < right_wall) && (angle_sum > left_wall) ){
-      // Attack
-      attacking = true;
-      TextOut(1,LCD_LINE1,"Attacking");
+    if(goal>90 && goal<270){
+      if( (angle_sum < right_wall) && (angle_sum > left_wall) ){
+        // Attack
+        attacking = true;
+        TextOut(1,LCD_LINE1,"Attacking");
+      }
+      
+      else{
+        // Defend
+        attacking = false;
+        TextOut(1,LCD_LINE1,"Defending");
+      }
     }
-    
     else{
-      // Defend
-      attacking = false;
-      TextOut(1,LCD_LINE1,"Defending");
+      if( (angle_sum < right_wall) || (angle_sum > left_wall) ){
+        // Attack
+        attacking = true;
+        TextOut(1,LCD_LINE1,"Attacking");
+      }
+      
+      else{
+        // Defend
+        attacking = false;
+        TextOut(1,LCD_LINE1,"Defending");
+      }
     }
     NumOut(60,LCD_LINE2,heading);
     NumOut(60,LCD_LINE3,ball_angle);
