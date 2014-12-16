@@ -51,11 +51,9 @@ The sensors used for this challenge are quite simple. An IR sensor is used to de
 
 Other than sensors, the hardware design for this robot is very simple. To make the robot faster the wheels are geared for speed, and for maneuverability the robots center of gravity is kept as low as possible.
 
-The software design for this project includes three distinct parts. A normal play mode, a goalie mode, and a penalty shooter mode. During the normal play mode the robot uses relative angle of the ball to its centerline and its own heading to determine whether it should be on offense or defense according to the sum of the heading and relative ball position as described in Eq~\ref{E.angle_sum}.
+The software design for this project includes three distinct parts. A normal play mode, a goalie mode, and a penalty shooter mode. During the normal play mode the robot uses relative angle of the ball to its centerline and its own heading to determine whether it should be on offense or defense according to the sum of the heading and relative ball position. When attacking, the robot should drive straight at the ball in order to kick it toward the opponents goals. When defending, the robot should loop back around the ball such that it wouldn't score an own goal.
 
-\begin{equation}\label{E.motor_speed}
-    P_{motor} = \frac{P_{max}-P_{min}}{I_{max}-I_{min}}I_{sensor} + offset
-\end{equation}
+For the goalie program, the robot simply tried to keep the ball in zone 2, by moving parallel to the goal line. If the ball moved into a zone greater than 2, the robot moved forward and if the ball moved into a zone less than 2, the robot moved backwards. For the penalty kicker program, the robot simply performed normal attack behavior - drive straight at the ball to kick it at the opponent goal.
 
 \section{Problems Encountered}\label{S.problems}
 
