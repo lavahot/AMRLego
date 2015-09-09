@@ -8,5 +8,6 @@ defaults:
 
 baseurl: "/AMRLego"
 prose:
+    rooturl: "/"
 	siteurl: "http://lavahot.github.io/AMRLego"
     media: "media"
