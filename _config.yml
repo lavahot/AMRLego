@@ -7,3 +7,6 @@ defaults:
       layout: "default"
 
 baseurl: "/AMRLego"
+prose:
+	siteurl: "http://lavahot.github.io/AMRLego"
+    
